@@ -265,7 +265,7 @@ export function projectTo2D(vectors: number[][]): { x: number; y: number }[] {
   function powerIteration(data: number[][], numIterations: number = 30): number[] {
     let p = new Array(dim).fill(0).map(() => Math.random() - 0.5);
     let norm = Math.sqrt(p.reduce((acc, val) => acc + val * val, 0));
-    p = p.map((val) => val / (norm || 1));
+    p = p.map((val) => val / (norm > 1e-8 ? norm : 1));
 
     for (let iter = 0; iter < numIterations; iter++) {
       const Xp = data.map((row) => row.reduce((sum, val, idx) => sum + val * p[idx], 0));
@@ -277,7 +277,7 @@ export function projectTo2D(vectors: number[][]): { x: number; y: number }[] {
       }
 
       norm = Math.sqrt(nextP.reduce((acc, val) => acc + val * val, 0));
-      if (norm === 0) break;
+      if (norm < 1e-8) break;
       p = nextP.map((val) => val / norm);
     }
     return p;
@@ -295,10 +295,19 @@ export function projectTo2D(vectors: number[][]): { x: number; y: number }[] {
   // Second component
   const pc2 = powerIteration(deflated);
 
-  // Project points
-  const points = centered.map((row) => {
-    const x = row.reduce((sum, val, idx) => sum + val * pc1[idx], 0) * 100;
-    const y = row.reduce((sum, val, idx) => sum + val * pc2[idx], 0) * 100;
+  // Project points with degenerate fallback
+  const points = centered.map((row, idx) => {
+    let x = row.reduce((sum, val, idx) => sum + val * pc1[idx], 0) * 100;
+    let y = row.reduce((sum, val, idx) => sum + val * pc2[idx], 0) * 100;
+
+    if (isNaN(x) || isNaN(y) || (Math.abs(x) < 1e-4 && Math.abs(y) < 1e-4)) {
+      // Deterministic spread to prevent overlapping single-dot collapse
+      const angle = (idx * 2 * Math.PI) / (n || 1);
+      const radius = 5 + (idx % 5) * 3;
+      x = Math.cos(angle) * radius;
+      y = Math.sin(angle) * radius;
+    }
+
     return {
       x: Math.round(x * 10) / 10,
       y: Math.round(y * 10) / 10,

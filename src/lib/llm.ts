@@ -4,8 +4,27 @@ import { CONFIG, getGeminiApiKey, getOpenRouterApiKey } from "./config";
 import { recordLLMCall } from "./metrics";
 import { isQuotaExhausted } from "./embeddings";
 
-// Prompt-hash response cache
+// Prompt-hash response cache with LRU eviction (max 200 items)
+const MAX_CACHE_ENTRIES = 200;
 const llmCache = new Map<string, any>();
+
+function getCachedResponse(key: string): any {
+  if (!llmCache.has(key)) return undefined;
+  const value = llmCache.get(key);
+  llmCache.delete(key);
+  llmCache.set(key, value);
+  return value;
+}
+
+function setCachedResponse(key: string, value: any): void {
+  if (llmCache.has(key)) {
+    llmCache.delete(key);
+  } else if (llmCache.size >= MAX_CACHE_ENTRIES) {
+    const oldestKey = llmCache.keys().next().value;
+    if (oldestKey) llmCache.delete(oldestKey);
+  }
+  llmCache.set(key, value);
+}
 
 export class LLMError extends Error {
   public status: number;
@@ -198,15 +217,16 @@ export async function callLLM<T>(options: CallLLMOptions<T>): Promise<T> {
     return mockFallback();
   }
 
-  // 2. Check hash cache
+  // 2. Check hash cache with LRU refresh
   const cacheKey = getCacheKey(prompt, model, temperature, maxTokens);
-  if (llmCache.has(cacheKey)) {
+  const cached = getCachedResponse(cacheKey);
+  if (cached !== undefined) {
     const elapsed = Date.now() - startTime;
     console.log(
       `[LLM] MODE: LIVE | PROVIDER: ${provider} | MODEL: ${model} | MAX_TOKENS: ${maxTokens} | LATENCY: ${elapsed}ms | CACHE: HIT`
     );
     recordLLMCall(stage, elapsed, provider, model, maxTokens);
-    return llmCache.get(cacheKey) as T;
+    return cached as T;
   }
 
   const RETRYABLE_STATUS_CODES = [429, 500, 502, 503, 504];
@@ -583,7 +603,7 @@ export async function callLLM<T>(options: CallLLMOptions<T>): Promise<T> {
 
     const valResult = schema.safeParse(parsed);
     if (valResult.success) {
-      llmCache.set(cacheKey, valResult.data);
+      setCachedResponse(cacheKey, valResult.data);
       const elapsed = Date.now() - startTime;
       recordLLMCall(stage, elapsed, provider, model, maxTokens);
       return valResult.data;
@@ -602,7 +622,7 @@ Please re-generate your response and ensure it strictly conforms to the requeste
     const retryValResult = schema.safeParse(retryParsed);
 
     if (retryValResult.success) {
-      llmCache.set(cacheKey, retryValResult.data);
+      setCachedResponse(cacheKey, retryValResult.data);
       const elapsed = Date.now() - startTime;
       recordLLMCall(stage, elapsed, provider, model, maxTokens);
       return retryValResult.data;

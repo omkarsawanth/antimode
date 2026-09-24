@@ -101,7 +101,11 @@ export async function calculateGenericnessScore(
   for (const trait of direction.personality.traits) {
     totalChecks += 1;
     const tLower = trait.trait.toLowerCase();
-    if (allToneWords.some((w) => tLower.includes(w) || w.includes(tLower))) {
+    const isHit = allToneWords.some((w) => {
+      const escaped = w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      return new RegExp(`\\b${escaped}\\b`, "i").test(tLower) || tLower === w.toLowerCase();
+    });
+    if (isHit) {
       cliche_hits.push(`Tone word: "${trait.trait}"`);
     }
   }

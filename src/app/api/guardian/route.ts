@@ -25,18 +25,23 @@ export async function POST(req: NextRequest) {
     const directViolations: { rule: string; excerpt: string; explanation: string; suggested_fix: string }[] = [];
 
     for (const banned of spec.banned_words) {
-      if (banned.length >= 3 && lowerText.includes(banned.toLowerCase())) {
-        const idx = lowerText.indexOf(banned.toLowerCase());
-        const start = Math.max(0, idx - 15);
-        const end = Math.min(text.length, idx + banned.length + 15);
-        const excerpt = text.substring(start, end).trim();
+      if (banned.length >= 2) {
+        const escaped = banned.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const regex = new RegExp(`\\b${escaped}\\b`, "i");
+        const match = text.match(regex);
+        if (match && match.index !== undefined) {
+          const idx = match.index;
+          const start = Math.max(0, idx - 15);
+          const end = Math.min(text.length, idx + match[0].length + 15);
+          const excerpt = text.substring(start, end).trim();
 
-        directViolations.push({
-          rule: `Banned word: "${banned}"`,
-          excerpt: `"...${excerpt}..."`,
-          explanation: `Uses explicitly banned term or marketing cliché "${banned}" forbidden in BrandSpec.`,
-          suggested_fix: `Remove "${banned}" and express concrete mechanical fact directly without conversational filler.`,
-        });
+          directViolations.push({
+            rule: `Banned word: "${banned}"`,
+            excerpt: `"...${excerpt}..."`,
+            explanation: `Uses explicitly banned term or marketing cliché "${banned}" forbidden in BrandSpec.`,
+            suggested_fix: `Remove "${banned}" and express concrete mechanical fact directly without conversational filler.`,
+          });
+        }
       }
     }
 

@@ -68,120 +68,120 @@ export async function POST(req: NextRequest) {
       mockFallback: () => fixture.directions,
     });
 
-    // 2. Refine directions with Critic (populating revisions)
-    const refinedDirections: Direction[] = [];
-    for (let i = 0; i < rawDirections.length; i++) {
-      const rawDir = rawDirections[i];
-      // If mockFallback was used and already has revisions, use it directly
-      if (rawDir.revisions && rawDir.revisions.length > 0) {
-        refinedDirections.push(rawDir);
-        continue;
-      }
+    // 2. Refine directions with Critic in parallel
+    const refinedDirections: Direction[] = await Promise.all(
+      rawDirections.map(async (rawDir) => {
+        if (rawDir.revisions && rawDir.revisions.length > 0) {
+          return rawDir;
+        }
 
-      const criticPrompt = renderPrompt("critic", {
-        direction_json: JSON.stringify(rawDir, null, 2),
-        common_tropes: session.generic_map.common_tone_words.join(", "),
-        cliches: cliches.tone_words.join(", "),
-        direction_id: rawDir.id,
-      });
+        const criticPrompt = renderPrompt("critic", {
+          direction_json: JSON.stringify(rawDir, null, 2),
+          common_tropes: session.generic_map!.common_tone_words.join(", "),
+          cliches: cliches.tone_words.join(", "),
+          direction_id: rawDir.id,
+        });
 
-      const refined = await callLLM({
-        prompt: criticPrompt,
-        schema: DirectionSchema,
-        temperature: 0.3,
-        stage: 3,
-        maxTokens: 2500,
-        mockFallback: () => ({
-          ...rawDir,
-          revisions: [
-            {
-              field: "tagline",
-              before: rawDir.tagline,
-              after: rawDir.tagline.replace(/the smarter way to|smart|empowering/gi, "uncompromising"),
-              reason: "Sharpened voice to eliminate passive or standard marketing tropes.",
-            },
-          ],
-        }),
-      });
+        return await callLLM({
+          prompt: criticPrompt,
+          schema: DirectionSchema,
+          temperature: 0.3,
+          stage: 3,
+          maxTokens: 2500,
+          mockFallback: () => ({
+            ...rawDir,
+            revisions: [
+              {
+                field: "tagline",
+                before: rawDir.tagline,
+                after: rawDir.tagline.replace(/the smarter way to|smart|empowering/gi, "uncompromising"),
+                reason: "Sharpened voice to eliminate passive or standard marketing tropes.",
+              },
+            ],
+          }),
+        });
+      })
+    );
 
-      refinedDirections.push(refined);
-    }
-
-    // 3. Compute Genericness Scores for all directions
+    // 3. Compute Genericness Scores, Blind Reads & Judge evaluations in parallel across directions
     const scoresMap: Record<string, Scores> = {};
     const blindReadsMap: Record<string, BlindRead[]> = {};
 
-    for (let i = 0; i < refinedDirections.length; i++) {
-      const dir = refinedDirections[i];
-      const genScore = await calculateGenericnessScore(dir, session.generic_map, 3);
+    await Promise.all(
+      refinedDirections.map(async (dir) => {
+        // Genericness embedding score
+        const genScore = await calculateGenericnessScore(dir, session.generic_map!, 3);
 
-      // 4. Blind Read (3 fresh reads seeing only name, tagline, palette)
-      const paletteSummary = dir.visual.palette.map((p) => `- ${p.role}: ${p.hex} (${p.name})`).join("\n");
-      const blindPrompt = renderPrompt("blind_reader", {
-        name: dir.name,
-        tagline: dir.tagline,
-        palette_summary: paletteSummary,
-      });
+        // 4. Blind Read (3 fresh readers running concurrently)
+        const paletteSummary = dir.visual.palette.map((p) => `- ${p.role}: ${p.hex} (${p.name})`).join("\n");
+        const blindPrompt = renderPrompt("blind_reader", {
+          name: dir.name,
+          tagline: dir.tagline,
+          palette_summary: paletteSummary,
+        });
 
-      const blindReads: BlindRead[] = [];
-      for (let r = 1; r <= 3; r++) {
-        const readResult = await callLLM({
-          prompt: `${blindPrompt}\n\n[Fresh reader #${r}]`,
-          schema: BlindReadSchema,
-          temperature: 0.7,
+        const blindReads: BlindRead[] = await Promise.all(
+          [1, 2, 3].map(async (r) => {
+            const readResult = await callLLM({
+              prompt: `${blindPrompt}\n\n[Fresh reader #${r}]`,
+              schema: BlindReadSchema,
+              temperature: 0.7,
+              stage: 4,
+              maxTokens: 1500,
+              mockFallback: () => {
+                const fallbackRead = fixture.blind_reads[r - 1] || fixture.blind_reads[0];
+                return {
+                  reader_id: r,
+                  guess: fallbackRead.guess,
+                };
+              },
+            });
+            return { ...readResult, reader_id: r };
+          })
+        );
+
+        blindReadsMap[dir.id] = blindReads;
+
+        // 5. Judge evaluation
+        const judgePrompt = renderPrompt("judge", {
+          brief_idea: session.brief!.idea,
+          brief_problem: session.brief!.problem,
+          brief_audience: `${session.brief!.audience.primary} (${session.brief!.audience.context})`,
+          brief_value: session.brief!.value,
+          blind_reads_json: JSON.stringify(blindReads, null, 2),
+        });
+
+        const judgeOutput = await callLLM({
+          prompt: judgePrompt,
+          schema: JudgeResponseSchema,
+          temperature: 0.2,
           stage: 4,
           maxTokens: 1500,
           mockFallback: () => {
-            const fallbackRead = fixture.blind_reads[r - 1] || fixture.blind_reads[0];
+            const fallbackScore = fixture.scores[dir.id] || fixture.scores["dir-1"];
             return {
-              reader_id: r,
-              guess: fallbackRead.guess,
+              reader_evaluations: [
+                { reader_id: 1, ...fallbackScore.gap_breakdown },
+                { reader_id: 2, ...fallbackScore.gap_breakdown },
+                { reader_id: 3, ...fallbackScore.gap_breakdown },
+              ],
             };
           },
         });
-        blindReads.push({ ...readResult, reader_id: r });
-      }
-      blindReadsMap[dir.id] = blindReads;
 
-      // 5. Judge evaluations
-      const judgePrompt = renderPrompt("judge", {
-        brief_idea: session.brief.idea,
-        brief_problem: session.brief.problem,
-        brief_audience: `${session.brief.audience.primary} (${session.brief.audience.context})`,
-        brief_value: session.brief.value,
-        blind_reads_json: JSON.stringify(blindReads, null, 2),
-      });
+        const perception = calculatePerceptionGap(judgeOutput.reader_evaluations);
+        const passed = isPass(genScore.genericness, perception.perception_gap);
 
-      const judgeOutput = await callLLM({
-        prompt: judgePrompt,
-        schema: JudgeResponseSchema,
-        temperature: 0.2,
-        stage: 4,
-        maxTokens: 1500,
-        mockFallback: () => {
-          const fallbackScore = fixture.scores[dir.id] || fixture.scores["dir-1"];
-          return {
-            reader_evaluations: [
-              { reader_id: 1, ...fallbackScore.gap_breakdown },
-              { reader_id: 2, ...fallbackScore.gap_breakdown },
-              { reader_id: 3, ...fallbackScore.gap_breakdown },
-            ],
-          };
-        },
-      });
-
-      const perception = calculatePerceptionGap(judgeOutput.reader_evaluations);
-      const passed = isPass(genScore.genericness, perception.perception_gap);
-
-      scoresMap[dir.id] = {
-        direction_id: dir.id,
-        genericness: genScore.genericness,
-        genericness_breakdown: genScore.breakdown,
-        perception_gap: perception.perception_gap,
-        gap_breakdown: perception.gap_breakdown,
-        pass: passed,
-      };
-    }
+        scoresMap[dir.id] = {
+          direction_id: dir.id,
+          genericness: genScore.genericness,
+          genericness_breakdown: genScore.breakdown,
+          perception_gap: perception.perception_gap,
+          gap_breakdown: perception.gap_breakdown,
+          pass: passed,
+        };
+      })
+    );
 
     // 6. Overlay Candidate Points on 2D Scatter Plot
     // Offset coordinates relative to 2D baseline cluster so they sit noticeably outside

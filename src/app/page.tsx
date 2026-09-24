@@ -94,6 +94,39 @@ export default function AntimodeApp() {
     }
   };
 
+  // Safe response parser that gracefully handles non-JSON / HTML 502/504 error pages
+  const safeFetchJson = async <T = any,>(
+    res: Response
+  ): Promise<{ ok: boolean; status: number; data: T; error?: string }> => {
+    const status = res.status;
+    const contentType = res.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      try {
+        const data = await res.json();
+        return { ok: res.ok, status, data, error: data?.error };
+      } catch {
+        // Fall through to text read
+      }
+    }
+    try {
+      const text = await res.text();
+      const cleanSnippet = text.replace(/<[^>]*>?/gm, " ").replace(/\s+/g, " ").trim().substring(0, 250);
+      return {
+        ok: res.ok,
+        status,
+        data: {} as T,
+        error: cleanSnippet || `HTTP ${status} ${res.statusText || "Server Error"}`,
+      };
+    } catch {
+      return {
+        ok: res.ok,
+        status,
+        data: {} as T,
+        error: `HTTP ${status} ${res.statusText || "Server Error"}`,
+      };
+    }
+  };
+
   // Start with a new session or load Seed 1 by default
   useEffect(() => {
     initSession(SEED_PRESETS[0].id);
@@ -110,14 +143,14 @@ export default function AntimodeApp() {
           idea: customIdea,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) {
+      const { ok, status, data, error } = await safeFetchJson(res);
+      if (!ok) {
         setLastCallFailed(true);
-        setLastCallStatus(res.status);
+        setLastCallStatus(status);
         setApiError({
-          message: data.error || "Failed to initialize session",
+          message: error || "Failed to initialize session",
           stageName: "Session Initialization",
-          status: res.status,
+          status,
           retryFn: () => initSession(seedId, customIdea),
         });
         return;
@@ -165,14 +198,14 @@ export default function AntimodeApp() {
           answer: answerText,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) {
+      const { ok, status, data, error } = await safeFetchJson(res);
+      if (!ok) {
         setLastCallFailed(true);
-        setLastCallStatus(res.status);
+        setLastCallStatus(status);
         setApiError({
-          message: data.error || "Interview step failed",
+          message: error || "Interview step failed",
           stageName: "Stage 1: Diagnostic Interview",
-          status: res.status,
+          status,
           retryFn: () => handleInterviewNext(answerText),
         });
         return;
@@ -222,15 +255,15 @@ export default function AntimodeApp() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ session_id: session.id }),
       });
-      const data = await res.json();
+      const { ok, status, data, error } = await safeFetchJson(res);
       clearInterval(interval);
-      if (!res.ok) {
+      if (!ok) {
         setLastCallFailed(true);
-        setLastCallStatus(res.status);
+        setLastCallStatus(status);
         setApiError({
-          message: data.error || "Generic map generation failed",
+          message: error || "Generic map generation failed",
           stageName: "Stage 2: Generic Baseline Map",
-          status: res.status,
+          status,
           retryFn: () => handleGenerateGenericMap(),
         });
         return;
@@ -265,14 +298,14 @@ export default function AntimodeApp() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ session_id: session.id }),
       });
-      const data = await res.json();
-      if (!res.ok) {
+      const { ok, status, data, error } = await safeFetchJson(res);
+      if (!ok) {
         setLastCallFailed(true);
-        setLastCallStatus(res.status);
+        setLastCallStatus(status);
         setApiError({
-          message: data.error || "Divergence failed",
+          message: error || "Divergence failed",
           stageName: "Stage 3-5: Divergence & Scoring",
-          status: res.status,
+          status,
           retryFn: () => handleDiverge(),
         });
         return;
@@ -313,14 +346,14 @@ export default function AntimodeApp() {
           patch,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) {
+      const { ok, status, data, error } = await safeFetchJson(res);
+      if (!ok) {
         setLastCallFailed(true);
-        setLastCallStatus(res.status);
+        setLastCallStatus(status);
         setApiError({
-          message: data.error || "Direction edit failed",
+          message: error || "Direction edit failed",
           stageName: "Stage 5: Direction Customization & Re-Score",
-          status: res.status,
+          status,
           retryFn: () => handleEditDirection(directionId, patch),
         });
         return;
@@ -349,14 +382,14 @@ export default function AntimodeApp() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ session_id: session.id }),
       });
-      const data = await res.json();
-      if (!res.ok) {
+      const { ok, status, data, error } = await safeFetchJson(res);
+      if (!ok) {
         setLastCallFailed(true);
-        setLastCallStatus(res.status);
+        setLastCallStatus(status);
         setApiError({
-          message: data.error || "Collision check failed",
+          message: error || "Collision check failed",
           stageName: "Stage 6: Trademark Collision Sentinel",
-          status: res.status,
+          status,
           retryFn: () => handleCheckCollisions(),
         });
         return;
@@ -396,14 +429,14 @@ export default function AntimodeApp() {
           rounds: 3,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) {
+      const { ok, status, data, error } = await safeFetchJson(res);
+      if (!ok) {
         setLastCallFailed(true);
-        setLastCallStatus(res.status);
+        setLastCallStatus(status);
         setApiError({
-          message: data.error || "Red-team execution failed",
+          message: error || "Red-team execution failed",
           stageName: "Stage 7: Adversarial Red-Team",
-          status: res.status,
+          status,
           retryFn: () => handleRunRedTeam(directionId),
         });
         return;
@@ -441,14 +474,14 @@ export default function AntimodeApp() {
           direction_id: targetDirId,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) {
+      const { ok, status, data, error } = await safeFetchJson(res);
+      if (!ok) {
         setLastCallFailed(true);
-        setLastCallStatus(res.status);
+        setLastCallStatus(status);
         setApiError({
-          message: data.error || "Delivery failed",
+          message: error || "Delivery failed",
           stageName: "Stage 8: Delivery & Production Launch",
-          status: res.status,
+          status,
           retryFn: () => handleDeliverKit(directionId),
         });
         return;
@@ -473,8 +506,8 @@ export default function AntimodeApp() {
   const refreshSession = async (id: string) => {
     try {
       const res = await fetch(`/api/session?id=${id}`);
-      const data = await res.json();
-      if (!res.ok) {
+      const { ok, data } = await safeFetchJson(res);
+      if (!ok) {
         setLastCallFailed(true);
         return;
       }
