@@ -124,7 +124,7 @@ export function resolveLLMModel(provider: string, customModel?: string): string 
   }
 
   if (provider === "groq") {
-    return process.env.LLM_MODEL || "llama-3.3-70b-versatile";
+    return process.env.LLM_MODEL || "qwen/qwen3.8-27b";
   }
 
   if (provider === "gemini") {

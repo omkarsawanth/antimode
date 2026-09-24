@@ -48,7 +48,7 @@ export const CONFIG = {
   get DEFAULT_LLM_MODEL(): string {
     const provider = this.LLM_PROVIDER;
     if (provider === "groq") {
-      return process.env.LLM_MODEL || "llama-3.3-70b-versatile";
+      return process.env.LLM_MODEL || "qwen/qwen3.8-27b";
     }
     if (provider === "openrouter") {
       const model = process.env.LLM_MODEL || process.env.OPENROUTER_MODEL;
@@ -71,7 +71,7 @@ export const CONFIG = {
   },
   get FALLBACK_LLM_MODEL(): string | undefined {
     if (process.env.LLM_FALLBACK_MODEL) return process.env.LLM_FALLBACK_MODEL;
-    if (this.LLM_PROVIDER === "groq") return "llama-3.1-8b-instant";
+    if (this.LLM_PROVIDER === "groq") return "openai/gpt-oss-120b";
     if (this.LLM_PROVIDER === "gemini") return "gemini-3.5-flash-lite";
     return undefined;
   },
