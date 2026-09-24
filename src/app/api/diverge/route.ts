@@ -64,6 +64,7 @@ export async function POST(req: NextRequest) {
       schema: DivergeResponseSchema,
       temperature: 0.85,
       stage: 3,
+      maxTokens: 3000,
       mockFallback: () => fixture.directions,
     });
 
@@ -89,6 +90,7 @@ export async function POST(req: NextRequest) {
         schema: DirectionSchema,
         temperature: 0.3,
         stage: 3,
+        maxTokens: 2500,
         mockFallback: () => ({
           ...rawDir,
           revisions: [
@@ -128,6 +130,7 @@ export async function POST(req: NextRequest) {
           schema: BlindReadSchema,
           temperature: 0.7,
           stage: 4,
+          maxTokens: 1500,
           mockFallback: () => {
             const fallbackRead = fixture.blind_reads[r - 1] || fixture.blind_reads[0];
             return {
@@ -154,6 +157,7 @@ export async function POST(req: NextRequest) {
         schema: JudgeResponseSchema,
         temperature: 0.2,
         stage: 4,
+        maxTokens: 1500,
         mockFallback: () => {
           const fallbackScore = fixture.scores[dir.id] || fixture.scores["dir-1"];
           return {

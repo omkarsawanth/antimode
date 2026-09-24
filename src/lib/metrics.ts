@@ -18,7 +18,8 @@ export function recordLLMCall(
   stage?: string | number,
   latencyMs: number = 0,
   provider: string = "",
-  model: string = ""
+  model: string = "",
+  maxTokens: number = 0
 ): void {
   totalLLMCalls++;
   const stageKey = formatStageKey(stage);
@@ -28,7 +29,7 @@ export function recordLLMCall(
   stageMetrics[stageKey].llm++;
 
   console.log(
-    `[METRICS][LLM] Call #${totalLLMCalls} | ${stageKey} | PROVIDER: ${provider} | MODEL: ${model} | LATENCY: ${latencyMs}ms | STAGE TOTAL: ${stageMetrics[stageKey].llm} LLMs | RUN TOTAL: ${totalLLMCalls} LLMs, ${totalEmbeddingCalls} Embeddings`
+    `[METRICS][LLM] Call #${totalLLMCalls} | ${stageKey} | PROVIDER: ${provider} | MODEL: ${model} | MAX_TOKENS: ${maxTokens} | LATENCY: ${latencyMs}ms | STAGE TOTAL: ${stageMetrics[stageKey].llm} LLMs | RUN TOTAL: ${totalLLMCalls} LLMs, ${totalEmbeddingCalls} Embeddings`
   );
 }
 

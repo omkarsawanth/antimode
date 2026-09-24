@@ -28,8 +28,24 @@ export const CONFIG = {
     return "none";
   },
   get DEFAULT_LLM_MODEL(): string {
+    const provider = this.LLM_PROVIDER;
+    if (provider === "openrouter") {
+      const model = process.env.LLM_MODEL || process.env.OPENROUTER_MODEL;
+      if (!model) {
+        if (this.isMockMode) return "mock-openrouter-model";
+        throw new Error(
+          "LLM_MODEL environment variable is unset. When LLM_PROVIDER=openrouter, LLM_MODEL must be explicitly set in .env.local (e.g. LLM_MODEL=meta-llama/llama-3.3-70b-instruct:free). Never falling back to Gemini default model."
+        );
+      }
+      if (model === "gemini-3.6-flash" || model === "gemini-2.5-flash") {
+        if (this.isMockMode) return "mock-openrouter-model";
+        throw new Error(
+          `Invalid LLM_MODEL for OpenRouter: "${model}" is the Gemini default model name. Please configure a valid OpenRouter model ID in .env.local (e.g. LLM_MODEL=meta-llama/llama-3.3-70b-instruct:free or google/gemini-2.0-flash-001). Never falling back to Gemini default model.`
+        );
+      }
+      return model;
+    }
     if (process.env.LLM_MODEL) return process.env.LLM_MODEL;
-    if (this.LLM_PROVIDER === "openrouter") return "meta-llama/llama-3.3-70b-instruct:free";
     return "gemini-3.6-flash";
   },
   get FALLBACK_LLM_MODEL(): string | undefined {

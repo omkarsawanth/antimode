@@ -38,6 +38,7 @@ export async function POST(req: NextRequest) {
       schema: CollisionArraySchema,
       temperature: 0.3,
       stage: 6,
+      maxTokens: 2000,
       mockFallback: () => {
         return fixture.collisions.filter((c) => candidateNames.includes(c.name)) || fixture.collisions;
       },

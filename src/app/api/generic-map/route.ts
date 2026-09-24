@@ -50,6 +50,7 @@ export async function POST(req: NextRequest) {
         schema: BaselineSamplesResponseSchema,
         temperature: 1.0,
         stage: 2,
+        maxTokens: 3000,
         mockFallback: () => {
           const base = fixture.generic_map.samples;
           const sliceStart = (b * batchSize) % base.length;

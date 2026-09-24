@@ -66,6 +66,7 @@ export async function POST(req: NextRequest) {
         schema: AttackResultSchema,
         temperature: 0.8,
         stage: 7,
+        maxTokens: 2000,
         mockFallback: () => {
           const fallbackRound = fixture.spec.rounds[r - 1] || {
             round: r,

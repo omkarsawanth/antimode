@@ -8,10 +8,16 @@ function getSystemInfo() {
   const p = CONFIG.LLM_PROVIDER;
   const providerLabel =
     p === "openrouter" ? "OpenRouter" : p === "gemini" ? "Gemini" : p === "openai" ? "OpenAI" : "None";
+  let model = "None";
+  try {
+    model = CONFIG.DEFAULT_LLM_MODEL;
+  } catch (err: any) {
+    model = err.message || "Model Config Error";
+  }
   return {
     is_mock_mode: isMock,
     provider: isMock ? "Mock / Fixture" : providerLabel,
-    model: CONFIG.DEFAULT_LLM_MODEL,
+    model,
     embedding_model: CONFIG.DEFAULT_EMBEDDING_MODEL,
   };
 }

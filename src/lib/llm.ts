@@ -16,7 +16,7 @@ export class LLMError extends Error {
     message: string,
     status: number = 500,
     provider: string = "openrouter",
-    model: string = CONFIG.DEFAULT_LLM_MODEL
+    model: string = "unknown"
   ) {
     super(message);
     this.name = "LLMError";
@@ -34,10 +34,89 @@ export interface CallLLMOptions<T> {
   mockFallback: () => T;
   model?: string;
   stage?: number | string;
+  maxTokens?: number;
 }
 
-function getCacheKey(prompt: string, model: string, temperature: number): string {
-  const content = `${model}::${temperature}::${prompt}`;
+export function resolveMaxTokens(stage?: string | number, customMaxTokens?: number): number {
+  if (process.env.LLM_MAX_TOKENS) {
+    const parsed = parseInt(process.env.LLM_MAX_TOKENS, 10);
+    if (!isNaN(parsed) && parsed > 0) return parsed;
+  }
+  if (customMaxTokens && customMaxTokens > 0) {
+    return customMaxTokens;
+  }
+
+  let stageNum: number | undefined;
+  if (typeof stage === "number") {
+    stageNum = stage;
+  } else if (typeof stage === "string") {
+    const match = stage.match(/\d+/);
+    if (match) stageNum = parseInt(match[0], 10);
+  }
+
+  switch (stageNum) {
+    case 1: // Interview turns
+      return 1500;
+    case 2: // Generating baseline samples
+      return 3000;
+    case 3: // Diverge directions & critic
+      return 3000;
+    case 4: // Scoring & blind reads
+      return 1500;
+    case 5: // Direction edit / rescoring
+      return 2500;
+    case 6: // Trademark collision
+      return 2000;
+    case 7: // Red-team attack
+      return 2000;
+    case 8: // Launch kit deliver
+      return 3000;
+    case 9: // Brand guardian audit
+      return 1500;
+    default:
+      return 2000;
+  }
+}
+
+export function resolveLLMModel(provider: string, customModel?: string): string {
+  if (customModel) return customModel;
+
+  if (provider === "openrouter") {
+    const model = process.env.LLM_MODEL || process.env.OPENROUTER_MODEL;
+    if (!model) {
+      if (CONFIG.isMockMode) return "mock-openrouter-model";
+      throw new LLMError(
+        "LLM_MODEL environment variable is unset. When LLM_PROVIDER=openrouter, you must set LLM_MODEL in .env.local (e.g. LLM_MODEL=meta-llama/llama-3.3-70b-instruct:free). Never falling back to Gemini default model.",
+        400,
+        "openrouter",
+        "unset"
+      );
+    }
+    if (model === "gemini-3.6-flash" || model === "gemini-2.5-flash") {
+      if (CONFIG.isMockMode) return "mock-openrouter-model";
+      throw new LLMError(
+        `Invalid LLM_MODEL for OpenRouter: "${model}". "${model}" is the Gemini default model name. Please set LLM_MODEL in .env.local to a valid OpenRouter model ID (e.g. LLM_MODEL=meta-llama/llama-3.3-70b-instruct:free or google/gemini-2.0-flash-001). Never falling back to Gemini default model.`,
+        400,
+        "openrouter",
+        model
+      );
+    }
+    return model;
+  }
+
+  if (provider === "gemini") {
+    return process.env.LLM_MODEL || "gemini-3.6-flash";
+  }
+
+  if (provider === "openai") {
+    return process.env.LLM_MODEL || process.env.OPENAI_MODEL || "gpt-4o-mini";
+  }
+
+  return process.env.LLM_MODEL || "gemini-3.6-flash";
+}
+
+function getCacheKey(prompt: string, model: string, temperature: number, maxTokens: number): string {
+  const content = `${model}::${temperature}::${maxTokens}::${prompt}`;
   return crypto.createHash("sha256").update(content).digest("hex");
 }
 
@@ -93,27 +172,40 @@ export async function callLLM<T>(options: CallLLMOptions<T>): Promise<T> {
     temperature = 0.7,
     timeoutMs = 50000,
     mockFallback,
-    model = CONFIG.DEFAULT_LLM_MODEL,
+    model: customModel,
     stage,
+    maxTokens: customMaxTokens,
   } = options;
 
   const startTime = Date.now();
   const provider = CONFIG.LLM_PROVIDER;
+  const model = resolveLLMModel(provider, customModel);
+  const maxTokens = resolveMaxTokens(stage, customMaxTokens);
+  const stageKey = typeof stage === "number" ? `Stage ${stage}` : stage || "General";
+
+  // Log model ID and max_tokens on every call
+  console.log(
+    `[LLM] CALL START | STAGE: ${stageKey} | PROVIDER: ${provider} | MODEL: ${model} | MAX_TOKENS: ${maxTokens}`
+  );
 
   // 1. If explicitly in mock mode, return fixture JSON
   if (CONFIG.isMockMode) {
     const elapsed = Date.now() - startTime;
-    recordLLMCall(stage, elapsed, "fixture", model);
+    console.log(
+      `[LLM] MODE: MOCK | STAGE: ${stageKey} | PROVIDER: fixture | MODEL: ${model} | MAX_TOKENS: ${maxTokens} | LATENCY: ${elapsed}ms`
+    );
+    recordLLMCall(stage, elapsed, "fixture", model, maxTokens);
     return mockFallback();
   }
 
   // 2. Check hash cache
-  const cacheKey = getCacheKey(prompt, model, temperature);
+  const cacheKey = getCacheKey(prompt, model, temperature, maxTokens);
   if (llmCache.has(cacheKey)) {
     const elapsed = Date.now() - startTime;
     console.log(
-      `[LLM] MODE: LIVE | PROVIDER: ${provider} | MODEL: ${model} | LATENCY: ${elapsed}ms | CACHE: HIT`
+      `[LLM] MODE: LIVE | PROVIDER: ${provider} | MODEL: ${model} | MAX_TOKENS: ${maxTokens} | LATENCY: ${elapsed}ms | CACHE: HIT`
     );
+    recordLLMCall(stage, elapsed, provider, model, maxTokens);
     return llmCache.get(cacheKey) as T;
   }
 
@@ -134,6 +226,9 @@ export async function callLLM<T>(options: CallLLMOptions<T>): Promise<T> {
       const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
       try {
+        console.log(
+          `[LLM][OpenRouter] Requesting model: "${targetModel}" | max_tokens: ${maxTokens} | attempt: ${attempt + 1}/${maxTries}`
+        );
         const res = await fetch(url, {
           method: "POST",
           headers: {
@@ -147,7 +242,7 @@ export async function callLLM<T>(options: CallLLMOptions<T>): Promise<T> {
             model: targetModel,
             messages: [{ role: "user", content: currentPrompt }],
             temperature,
-            // Do NOT include response_format: { type: "json_object" } to support all open models
+            max_tokens: maxTokens,
           }),
         });
 
@@ -262,6 +357,9 @@ export async function callLLM<T>(options: CallLLMOptions<T>): Promise<T> {
       const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
       try {
+        console.log(
+          `[LLM][Gemini] Requesting model: "${targetModel}" | max_tokens: ${maxTokens} | attempt: ${attempt + 1}/${maxTries}`
+        );
         const res = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -270,6 +368,7 @@ export async function callLLM<T>(options: CallLLMOptions<T>): Promise<T> {
             contents: [{ parts: [{ text: currentPrompt }] }],
             generationConfig: {
               temperature,
+              maxOutputTokens: maxTokens,
               responseMimeType: "application/json",
             },
           }),
@@ -424,6 +523,9 @@ export async function callLLM<T>(options: CallLLMOptions<T>): Promise<T> {
       const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
       try {
+        console.log(
+          `[LLM][OpenAI] Requesting model: "${process.env.OPENAI_MODEL || "gpt-4o-mini"}" | max_tokens: ${maxTokens}`
+        );
         const res = await fetch("https://api.openai.com/v1/chat/completions", {
           method: "POST",
           headers: {
@@ -434,6 +536,7 @@ export async function callLLM<T>(options: CallLLMOptions<T>): Promise<T> {
           body: JSON.stringify({
             model: process.env.OPENAI_MODEL || "gpt-4o-mini",
             temperature,
+            max_tokens: maxTokens,
             messages: [{ role: "user", content: currentPrompt }],
           }),
         });
@@ -482,7 +585,7 @@ export async function callLLM<T>(options: CallLLMOptions<T>): Promise<T> {
     if (valResult.success) {
       llmCache.set(cacheKey, valResult.data);
       const elapsed = Date.now() - startTime;
-      recordLLMCall(stage, elapsed, provider, model);
+      recordLLMCall(stage, elapsed, provider, model, maxTokens);
       return valResult.data;
     }
 
@@ -501,7 +604,7 @@ Please re-generate your response and ensure it strictly conforms to the requeste
     if (retryValResult.success) {
       llmCache.set(cacheKey, retryValResult.data);
       const elapsed = Date.now() - startTime;
-      recordLLMCall(stage, elapsed, provider, model);
+      recordLLMCall(stage, elapsed, provider, model, maxTokens);
       return retryValResult.data;
     }
 
@@ -515,7 +618,7 @@ Please re-generate your response and ensure it strictly conforms to the requeste
   } catch (err: any) {
     const elapsed = Date.now() - startTime;
     console.error(
-      `[LLM] CALL FAILED | PROVIDER: ${provider} | MODEL: ${model} | ERROR: ${err?.message} | LATENCY: ${elapsed}ms`
+      `[LLM] CALL FAILED | STAGE: ${stageKey} | PROVIDER: ${provider} | MODEL: ${model} | MAX_TOKENS: ${maxTokens} | ERROR: ${err?.message} | LATENCY: ${elapsed}ms`
     );
 
     // In LIVE mode, NEVER fall back to fixtures! Throw typed error!

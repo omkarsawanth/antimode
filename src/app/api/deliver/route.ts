@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
       schema: BrandKitLaunchSchema,
       temperature: 0.7,
       stage: 8,
+      maxTokens: 3000,
       mockFallback: () => {
         return fixture.brand_kit.launch;
       },
