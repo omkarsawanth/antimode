@@ -11,6 +11,10 @@ export function getOpenRouterApiKey(): string | undefined {
   return process.env.OPENROUTER_API_KEY;
 }
 
+export function getGroqApiKey(): string | undefined {
+  return process.env.GROQ_API_KEY;
+}
+
 export const CONFIG = {
   // Thresholds as per SPEC section 6
   GENERICNESS_MAX_THRESHOLD: 55, // genericness <= 55
@@ -27,6 +31,8 @@ export const CONFIG = {
   get LLM_PROVIDER(): string {
     const fromEnv = process.env.LLM_PROVIDER?.toLowerCase();
     if (fromEnv) return fromEnv;
+    // If GROQ_API_KEY is configured and no other provider is forced
+    if (getGroqApiKey()) return "groq";
     // If LLM_MODEL is explicitly an OpenRouter model name (contains /)
     const model = process.env.LLM_MODEL || process.env.OPENROUTER_MODEL;
     if (model && model.includes("/") && getOpenRouterApiKey()) {
@@ -41,6 +47,9 @@ export const CONFIG = {
   },
   get DEFAULT_LLM_MODEL(): string {
     const provider = this.LLM_PROVIDER;
+    if (provider === "groq") {
+      return process.env.LLM_MODEL || "llama-3.3-70b-versatile";
+    }
     if (provider === "openrouter") {
       const model = process.env.LLM_MODEL || process.env.OPENROUTER_MODEL;
       if (!model) {
@@ -61,7 +70,10 @@ export const CONFIG = {
     return "gemini-3.5-flash";
   },
   get FALLBACK_LLM_MODEL(): string | undefined {
-    return process.env.LLM_FALLBACK_MODEL || undefined;
+    if (process.env.LLM_FALLBACK_MODEL) return process.env.LLM_FALLBACK_MODEL;
+    if (this.LLM_PROVIDER === "groq") return "llama-3.1-8b-instant";
+    if (this.LLM_PROVIDER === "gemini") return "gemini-3.5-flash-lite";
+    return undefined;
   },
   get DEFAULT_EMBEDDING_MODEL(): string {
     return process.env.EMBEDDING_MODEL || "nvidia/nemotron-3-embed-1b:free";
@@ -72,6 +84,6 @@ export const CONFIG = {
     if (process.env.MOCK_MODE === "true") return true;
     if (process.env.MOCK_MODE === "false") return false;
     // If no API key configured, automatically default to mock mode so app runs out of the box
-    return !getGeminiApiKey() && !getOpenRouterApiKey() && !process.env.OPENAI_API_KEY;
+    return !getGeminiApiKey() && !getOpenRouterApiKey() && !getGroqApiKey() && !process.env.OPENAI_API_KEY;
   },
 };

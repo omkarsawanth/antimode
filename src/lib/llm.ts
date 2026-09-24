@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { ZodSchema } from "zod";
-import { CONFIG, getGeminiApiKey, getOpenRouterApiKey } from "./config";
+import { CONFIG, getGeminiApiKey, getOpenRouterApiKey, getGroqApiKey } from "./config";
 import { recordLLMCall } from "./metrics";
 import { isQuotaExhausted } from "./embeddings";
 
@@ -121,6 +121,10 @@ export function resolveLLMModel(provider: string, customModel?: string): string 
       );
     }
     return model;
+  }
+
+  if (provider === "groq") {
+    return process.env.LLM_MODEL || "llama-3.3-70b-versatile";
   }
 
   if (provider === "gemini") {
@@ -389,6 +393,144 @@ export async function callLLM<T>(options: CallLLMOptions<T>): Promise<T> {
     );
   }
 
+  // Groq API invocation with backoff
+  async function callGroqApi(
+    currentPrompt: string,
+    targetModel: string,
+    apiKey: string,
+    maxTries: number = 4
+  ): Promise<string> {
+    const url = "https://api.groq.com/openai/v1/chat/completions";
+    let lastStatus = 500;
+
+    for (let attempt = 0; attempt < maxTries; attempt++) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+      try {
+        console.log(
+          `[LLM][Groq] Requesting model: "${targetModel}" | max_tokens: ${maxTokens} | attempt: ${attempt + 1}/${maxTries}`
+        );
+        const res = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          signal: controller.signal,
+          body: JSON.stringify({
+            model: targetModel,
+            messages: [{ role: "user", content: currentPrompt }],
+            temperature,
+            max_tokens: maxTokens,
+            response_format: { type: "json_object" },
+          }),
+        });
+
+        // Check for quota exhaustion first - DO NOT RETRY
+        if (res.status === 429 || res.status === 402) {
+          const errText = await res.text();
+          if (isQuotaExhausted(res.status, errText)) {
+            console.warn(`[LLM] Groq quota exhausted (HTTP ${res.status}). Skipping retries.`);
+            throw new LLMError(
+              `Groq quota exhausted (HTTP ${res.status}): ${errText}`,
+              res.status,
+              "groq",
+              targetModel
+            );
+          }
+
+          // Transient 429 rate limit
+          lastStatus = 429;
+          if (attempt < maxTries - 1) {
+            const delay = 2000 * Math.pow(2, attempt) + Math.random() * 1000;
+            console.warn(
+              `[LLM] HTTP 429 Rate Limit from Groq (${targetModel}). Retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${maxTries - 1})...`
+            );
+            await new Promise((r) => setTimeout(r, delay));
+            continue;
+          }
+          throw new LLMError(
+            `Groq API rate limit exceeded (HTTP 429): ${errText}`,
+            429,
+            "groq",
+            targetModel
+          );
+        }
+
+        // 5xx retryable status
+        if (res.status >= 500 && res.status <= 504) {
+          lastStatus = res.status;
+          const errText = await res.text();
+          if (attempt < maxTries - 1) {
+            const delay = 2000 * Math.pow(2, attempt) + Math.random() * 1000;
+            console.warn(
+              `[LLM] HTTP ${res.status} error from Groq (${targetModel}). Retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${maxTries - 1})...`
+            );
+            await new Promise((r) => setTimeout(r, delay));
+            continue;
+          }
+          throw new LLMError(
+            `Groq API error (HTTP ${res.status}): ${errText}`,
+            res.status,
+            "groq",
+            targetModel
+          );
+        }
+
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new LLMError(
+            `Groq API error ${res.status}: ${errText}`,
+            res.status,
+            "groq",
+            targetModel
+          );
+        }
+
+        const data = await res.json();
+        const text = data.choices?.[0]?.message?.content;
+        if (!text) {
+          throw new LLMError("Empty message response from Groq API", 502, "groq", targetModel);
+        }
+        return text;
+      } catch (fetchErr: any) {
+        if (fetchErr instanceof LLMError) throw fetchErr;
+        if (fetchErr.name === "AbortError") {
+          throw new LLMError(
+            `Groq request timed out after ${timeoutMs}ms`,
+            504,
+            "groq",
+            targetModel
+          );
+        }
+        if (attempt < maxTries - 1) {
+          const delay = 2000 * Math.pow(2, attempt) + Math.random() * 1000;
+          console.warn(
+            `[LLM] Fetch error on Groq model ${targetModel}: ${fetchErr.message}. Retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${maxTries - 1})...`
+          );
+          await new Promise((r) => setTimeout(r, delay));
+          continue;
+        }
+        throw new LLMError(
+          fetchErr.message || "Failed to communicate with Groq API",
+          lastStatus || 500,
+          "groq",
+          targetModel
+        );
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
+
+    throw new LLMError(
+      `Exhausted retries calling Groq API (${targetModel})`,
+      lastStatus,
+      "groq",
+      targetModel
+    );
+  }
+
   // Gemini API invocation with backoff
   async function callGeminiApi(
     currentPrompt: string,
@@ -526,7 +668,30 @@ export async function callLLM<T>(options: CallLLMOptions<T>): Promise<T> {
   async function invokeProvider(currentPrompt: string): Promise<string> {
     const selectedProvider = CONFIG.LLM_PROVIDER;
 
-    if (selectedProvider === "openrouter") {
+    if (selectedProvider === "groq") {
+      const groqKey = getGroqApiKey();
+      if (!groqKey) {
+        throw new LLMError(
+          "No Groq API key configured. Provide GROQ_API_KEY in .env.local",
+          401,
+          "groq",
+          model
+        );
+      }
+
+      try {
+        return await callGroqApi(currentPrompt, model, groqKey, 4);
+      } catch (err: any) {
+        const fallbackModel = CONFIG.FALLBACK_LLM_MODEL;
+        if (err instanceof LLMError && err.status === 503 && fallbackModel && fallbackModel !== model) {
+          console.warn(
+            `[LLM] Primary Groq model ${model} returned HTTP 503 after retries. Switching to fallback model: ${fallbackModel}`
+          );
+          return await callGroqApi(currentPrompt, fallbackModel, groqKey, 1);
+        }
+        throw err;
+      }
+    } else if (selectedProvider === "openrouter") {
       const openRouterKey = getOpenRouterApiKey();
       if (!openRouterKey) {
         throw new LLMError(
