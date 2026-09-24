@@ -79,8 +79,10 @@ export async function getEmbedding(text: string): Promise<number[]> {
     );
   }
 
-  const maxRetries = 3;
+  const RETRYABLE_STATUS_CODES = [429, 500, 502, 503, 504];
+  const maxRetries = 4;
   let res: Response | null = null;
+  let lastStatus = 500;
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:embedContent?key=${apiKey}`;
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -94,28 +96,49 @@ export async function getEmbedding(text: string): Promise<number[]> {
         }),
       });
 
-      if (res.status === 429) {
+      if (RETRYABLE_STATUS_CODES.includes(res.status)) {
+        lastStatus = res.status;
         if (attempt < maxRetries - 1) {
-          const delay = Math.pow(2, attempt) * 1500 + Math.random() * 500;
+          const delay = 2000 * Math.pow(2, attempt) + Math.random() * 1000;
           console.warn(
-            `[EMBEDDING] HTTP 429 Rate Limit. Retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${maxRetries})...`
+            `[EMBEDDING] HTTP ${res.status} error. Retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${maxRetries - 1})...`
           );
           await new Promise((r) => setTimeout(r, delay));
           continue;
         }
-        throw new LLMError("Gemini embedding rate limit exceeded (HTTP 429)", 429, "gemini", model);
+        const errText = await res.text();
+        throw new LLMError(
+          `Gemini embedding error (HTTP ${res.status}): ${errText.substring(0, 300)}`,
+          res.status,
+          "gemini",
+          model
+        );
       }
+
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new LLMError(
+          `Gemini embedding API error ${res.status}: ${errText.substring(0, 300)}`,
+          res.status,
+          "gemini",
+          model
+        );
+      }
+
       break;
     } catch (err: any) {
       if (err instanceof LLMError) throw err;
       if (attempt < maxRetries - 1) {
-        const delay = Math.pow(2, attempt) * 1000;
+        const delay = 2000 * Math.pow(2, attempt) + Math.random() * 1000;
+        console.warn(
+          `[EMBEDDING] Fetch error: ${err.message}. Retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${maxRetries - 1})...`
+        );
         await new Promise((r) => setTimeout(r, delay));
         continue;
       }
       throw new LLMError(
         err.message || "Failed to communicate with Gemini Embedding API",
-        500,
+        lastStatus || 500,
         "gemini",
         model
       );
@@ -125,8 +148,8 @@ export async function getEmbedding(text: string): Promise<number[]> {
   if (!res || !res.ok) {
     const errText = res ? await res.text() : "No response";
     throw new LLMError(
-      `Gemini embedding API error ${res?.status || 500}: ${errText.substring(0, 300)}`,
-      res?.status || 500,
+      `Gemini embedding API error ${res?.status || lastStatus}: ${errText.substring(0, 300)}`,
+      res?.status || lastStatus,
       "gemini",
       model
     );
@@ -140,9 +163,18 @@ export async function getEmbedding(text: string): Promise<number[]> {
   return data.embedding.values as number[];
 }
 
-// Batch embed multiple texts
-export async function getEmbeddings(texts: string[]): Promise<number[][]> {
-  return Promise.all(texts.map((t) => getEmbedding(t)));
+// Batch embed multiple texts in batches of 3 with short delays
+export async function getEmbeddings(texts: string[], concurrency: number = 3): Promise<number[][]> {
+  const results: number[][] = [];
+  for (let i = 0; i < texts.length; i += concurrency) {
+    if (i > 0) {
+      await new Promise((r) => setTimeout(r, 200));
+    }
+    const batch = texts.slice(i, i + concurrency);
+    const batchResults = await Promise.all(batch.map((t) => getEmbedding(t)));
+    results.push(...batchResults);
+  }
+  return results;
 }
 
 // Dimensionality reduction: Classical Multidimensional Scaling (MDS) / PCA to 2D

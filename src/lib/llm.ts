@@ -71,86 +71,118 @@ export async function callLLM<T>(options: CallLLMOptions<T>): Promise<T> {
     return llmCache.get(cacheKey) as T;
   }
 
-  // Helper for single invocation with exponential backoff on 429
-  async function invokeProvider(currentPrompt: string): Promise<string> {
-    const maxRetries = 3;
+  // Helper for Gemini API invocation with exponential backoff on retryable status codes
+  const RETRYABLE_STATUS_CODES = [429, 500, 502, 503, 504];
 
-    if (apiKey) {
-      // Direct Gemini API call with structured JSON response
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  async function callGeminiApi(
+    currentPrompt: string,
+    targetModel: string,
+    key: string,
+    maxTries: number = 4
+  ): Promise<string> {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${key}`;
+    let lastStatus = 500;
+    let lastErrorText = "";
 
-      for (let attempt = 0; attempt < maxRetries; attempt++) {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    for (let attempt = 0; attempt < maxTries; attempt++) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
-        try {
-          const res = await fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            signal: controller.signal,
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: currentPrompt }] }],
-              generationConfig: {
-                temperature,
-                responseMimeType: "application/json",
-              },
-            }),
-          });
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: currentPrompt }] }],
+            generationConfig: {
+              temperature,
+              responseMimeType: "application/json",
+            },
+          }),
+        });
 
-          if (res.status === 429) {
-            if (attempt < maxRetries - 1) {
-              const delay = Math.pow(2, attempt) * 1500 + Math.random() * 500;
-              console.warn(
-                `[LLM] HTTP 429 Rate Limit. Retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${maxRetries})...`
-              );
-              await new Promise((r) => setTimeout(r, delay));
-              continue;
-            } else {
-              const errText = await res.text();
-              throw new LLMError(
-                `Gemini API rate limit exceeded (HTTP 429): ${errText.substring(0, 300)}`,
-                429,
-                "gemini",
-                model
-              );
-            }
-          }
-
-          if (!res.ok) {
-            const errText = await res.text();
-            throw new LLMError(
-              `Gemini API error ${res.status}: ${errText.substring(0, 300)}`,
-              res.status,
-              "gemini",
-              model
+        if (RETRYABLE_STATUS_CODES.includes(res.status)) {
+          lastStatus = res.status;
+          lastErrorText = await res.text();
+          if (attempt < maxTries - 1) {
+            const delay = 2000 * Math.pow(2, attempt) + Math.random() * 1000;
+            console.warn(
+              `[LLM] HTTP ${res.status} error on model ${targetModel}. Retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${maxTries - 1})...`
             );
-          }
-
-          const data = await res.json();
-          const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (!text) {
-            throw new LLMError("Empty candidate response from Gemini API", 502, "gemini", model);
-          }
-          return text;
-        } catch (fetchErr: any) {
-          if (fetchErr instanceof LLMError) throw fetchErr;
-          if (attempt < maxRetries - 1 && fetchErr.name !== "AbortError") {
-            const delay = Math.pow(2, attempt) * 1000;
             await new Promise((r) => setTimeout(r, delay));
             continue;
+          } else {
+            throw new LLMError(
+              `Gemini API error (HTTP ${res.status}) on model ${targetModel}: ${lastErrorText.substring(0, 300)}`,
+              res.status,
+              "gemini",
+              targetModel
+            );
           }
-          throw new LLMError(
-            fetchErr.message || "Failed to communicate with Gemini API",
-            500,
-            "gemini",
-            model
-          );
-        } finally {
-          clearTimeout(timeout);
         }
-      }
 
-      throw new LLMError("Exhausted retries calling Gemini API", 500, "gemini", model);
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new LLMError(
+            `Gemini API error ${res.status}: ${errText.substring(0, 300)}`,
+            res.status,
+            "gemini",
+            targetModel
+          );
+        }
+
+        const data = await res.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!text) {
+          throw new LLMError("Empty candidate response from Gemini API", 502, "gemini", targetModel);
+        }
+        return text;
+      } catch (fetchErr: any) {
+        if (fetchErr instanceof LLMError) throw fetchErr;
+        if (attempt < maxTries - 1 && fetchErr.name !== "AbortError") {
+          const delay = 2000 * Math.pow(2, attempt) + Math.random() * 1000;
+          console.warn(
+            `[LLM] Network/fetch error on model ${targetModel}: ${fetchErr.message}. Retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${maxTries - 1})...`
+          );
+          await new Promise((r) => setTimeout(r, delay));
+          continue;
+        }
+        throw new LLMError(
+          fetchErr.message || "Failed to communicate with Gemini API",
+          lastStatus || 500,
+          "gemini",
+          targetModel
+        );
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
+
+    throw new LLMError(
+      `Exhausted retries calling Gemini API (${targetModel})`,
+      lastStatus,
+      "gemini",
+      targetModel
+    );
+  }
+
+  // Helper for single invocation with model fallback
+  async function invokeProvider(currentPrompt: string): Promise<string> {
+    if (apiKey) {
+      try {
+        return await callGeminiApi(currentPrompt, model, apiKey, 4);
+      } catch (err: any) {
+        const fallbackModel = CONFIG.FALLBACK_LLM_MODEL;
+        // If the primary model still returns 503 after retries, retry once with fallback model
+        if (err instanceof LLMError && err.status === 503 && fallbackModel && fallbackModel !== model) {
+          console.warn(
+            `[LLM] Primary model ${model} returned HTTP 503 after retries. Switching to fallback model: ${fallbackModel}`
+          );
+          return await callGeminiApi(currentPrompt, fallbackModel, apiKey, 1);
+        }
+        throw err;
+      }
     } else if (process.env.OPENAI_API_KEY) {
       // OpenAI fallback
       const controller = new AbortController();

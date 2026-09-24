@@ -26,11 +26,17 @@ export async function POST(req: NextRequest) {
     const fixture = getFixtureForIdea(session.brief.idea);
 
     const totalSamples = 30;
-    const batchSize = 5;
+    const batchSize = 3;
     const allSamples: any[] = [];
+    const totalBatches = Math.ceil(totalSamples / batchSize);
 
-    // Run 30-sample generation in batches of 5
-    for (let b = 0; b < totalSamples / batchSize; b++) {
+    // Run 30-sample generation in batches of 3 with short delays between batches
+    for (let b = 0; b < totalBatches; b++) {
+      if (b > 0) {
+        // Short delay between batches to be gentler on rate limits
+        await new Promise((r) => setTimeout(r, 600));
+      }
+
       const prompt = renderPrompt("generic_baseline", {
         idea: session.brief.idea,
         problem: session.brief.problem,
@@ -40,7 +46,7 @@ export async function POST(req: NextRequest) {
       });
 
       const batchSamples = await callLLM({
-        prompt: `${prompt}\n\n[Batch ${b + 1} of ${totalSamples / batchSize}]`,
+        prompt: `${prompt}\n\n[Batch ${b + 1} of ${totalBatches}]`,
         schema: BaselineSamplesResponseSchema,
         temperature: 1.0,
         mockFallback: () => {

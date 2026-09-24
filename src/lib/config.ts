@@ -18,6 +18,9 @@ export const CONFIG = {
   get DEFAULT_LLM_MODEL(): string {
     return process.env.LLM_MODEL || "gemini-3.6-flash";
   },
+  get FALLBACK_LLM_MODEL(): string | undefined {
+    return process.env.LLM_FALLBACK_MODEL || undefined;
+  },
   get DEFAULT_EMBEDDING_MODEL(): string {
     return process.env.EMBEDDING_MODEL || "gemini-embedding-2";
   },

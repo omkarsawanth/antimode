@@ -71,12 +71,28 @@ export default function AntimodeApp() {
   });
   const [lastCallFailed, setLastCallFailed] = useState<boolean>(false);
   const [lastCallStatus, setLastCallStatus] = useState<number | undefined>(undefined);
+  const [isRetrying, setIsRetrying] = useState<boolean>(false);
+  const [retryCount, setRetryCount] = useState<number>(0);
   const [apiError, setApiError] = useState<{
     message: string;
     stageName: string;
     status?: number;
-    retryFn?: () => void;
+    retryFn?: () => Promise<void> | void;
   } | null>(null);
+
+  const handleRetry = async () => {
+    if (!apiError?.retryFn || isRetrying) return;
+    setIsRetrying(true);
+    setRetryCount((prev) => prev + 1);
+    try {
+      await apiError.retryFn();
+      setRetryCount(0);
+    } catch (err) {
+      console.error("Retry failed:", err);
+    } finally {
+      setIsRetrying(false);
+    }
+  };
 
   // Start with a new session or load Seed 1 by default
   useEffect(() => {
@@ -196,9 +212,9 @@ export default function AntimodeApp() {
       setStreamProgress((prev) => {
         if (!prev) return null;
         if (prev.step >= 28) return prev;
-        return { step: Math.min(28, prev.step + 5), total: 30 };
+        return { step: Math.min(28, prev.step + 3), total: 30 };
       });
-    }, 400);
+    }, 600);
 
     try {
       const res = await fetch("/api/generic-map", {
@@ -540,7 +556,7 @@ export default function AntimodeApp() {
           </div>
         </header>
 
-        {/* Error Banner with Retry Button */}
+        {/* Error Banner with Retry Button & Retry Count */}
         {apiError && (
           <div className="bg-rose-950/90 border-2 border-rose-600 rounded-xl p-4 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-rose-100 font-mono text-xs">
             <div className="flex items-start sm:items-center gap-3">
@@ -548,11 +564,22 @@ export default function AntimodeApp() {
                 <AlertTriangle className="w-5 h-5 text-rose-400" />
               </div>
               <div>
-                <div className="flex items-center gap-2 font-bold text-rose-200 uppercase tracking-wide">
+                <div className="flex flex-wrap items-center gap-2 font-bold text-rose-200 uppercase tracking-wide">
                   <span>{apiError.stageName} Failed</span>
                   {apiError.status && (
                     <span className="px-1.5 py-0.5 rounded bg-rose-900/80 text-[10px] text-rose-300 border border-rose-700">
                       HTTP {apiError.status}
+                    </span>
+                  )}
+                  {isRetrying && (
+                    <span className="px-2 py-0.5 rounded bg-amber-900/90 text-amber-200 border border-amber-600 text-[10px] font-bold animate-pulse flex items-center gap-1.5">
+                      <Loader2 className="w-3 h-3 animate-spin text-amber-300" />
+                      <span>Retrying (attempt #{retryCount})...</span>
+                    </span>
+                  )}
+                  {!isRetrying && retryCount > 0 && (
+                    <span className="px-2 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-700 text-[10px]">
+                      Retried {retryCount} time{retryCount > 1 ? "s" : ""}
                     </span>
                   )}
                 </div>
@@ -563,20 +590,30 @@ export default function AntimodeApp() {
               {apiError.retryFn && (
                 <button
                   type="button"
-                  onClick={() => {
-                    const fn = apiError.retryFn;
-                    setApiError(null);
-                    fn?.();
-                  }}
-                  className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg font-bold flex items-center gap-1.5 transition-colors shadow"
+                  disabled={isRetrying}
+                  onClick={handleRetry}
+                  className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-500 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg font-bold flex items-center gap-1.5 transition-colors shadow"
                 >
-                  <RefreshCw className="w-3.5 h-3.5" />
-                  <span>Retry</span>
+                  {isRetrying ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Retrying (#{retryCount})...</span>
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      <span>Retry{retryCount > 0 ? ` (${retryCount})` : ""}</span>
+                    </>
+                  )}
                 </button>
               )}
               <button
                 type="button"
-                onClick={() => setApiError(null)}
+                onClick={() => {
+                  setApiError(null);
+                  setRetryCount(0);
+                  setIsRetrying(false);
+                }}
                 className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg font-semibold transition-colors"
               >
                 Dismiss
