@@ -34,6 +34,7 @@ import {
   ShieldCheck,
   CheckCircle2,
   Zap,
+  AlertTriangle,
 } from "lucide-react";
 
 const SEED_PRESETS = [
@@ -63,6 +64,19 @@ export default function AntimodeApp() {
   const [streamProgress, setStreamProgress] = useState<{ step: number; total: number } | null>(null);
   const [selectedDirectionId, setSelectedDirectionId] = useState<string | null>(null);
   const [collisions, setCollisions] = useState<Collision[]>([]);
+  const [systemMode, setSystemMode] = useState<{ is_mock_mode: boolean; provider: string; model: string }>({
+    is_mock_mode: false,
+    provider: "Gemini",
+    model: "gemini-3.6-flash",
+  });
+  const [lastCallFailed, setLastCallFailed] = useState<boolean>(false);
+  const [lastCallStatus, setLastCallStatus] = useState<number | undefined>(undefined);
+  const [apiError, setApiError] = useState<{
+    message: string;
+    stageName: string;
+    status?: number;
+    retryFn?: () => void;
+  } | null>(null);
 
   // Start with a new session or load Seed 1 by default
   useEffect(() => {
@@ -81,6 +95,27 @@ export default function AntimodeApp() {
         }),
       });
       const data = await res.json();
+      if (!res.ok) {
+        setLastCallFailed(true);
+        setLastCallStatus(res.status);
+        setApiError({
+          message: data.error || "Failed to initialize session",
+          stageName: "Session Initialization",
+          status: res.status,
+          retryFn: () => initSession(seedId, customIdea),
+        });
+        return;
+      }
+      setLastCallFailed(false);
+      setLastCallStatus(undefined);
+      setApiError(null);
+      if (data.is_mock_mode !== undefined) {
+        setSystemMode({
+          is_mock_mode: data.is_mock_mode,
+          provider: data.provider,
+          model: data.model,
+        });
+      }
       if (data.session) {
         setSession(data.session);
         setRawIdea(data.session.brief?.idea || customIdea || "");
@@ -88,8 +123,14 @@ export default function AntimodeApp() {
         setSelectedDirectionId(null);
         setCollisions([]);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to init session:", err);
+      setLastCallFailed(true);
+      setApiError({
+        message: err.message || "Failed to initialize session",
+        stageName: "Session Initialization",
+        retryFn: () => initSession(seedId, customIdea),
+      });
     } finally {
       setLoading(false);
     }
@@ -109,6 +150,20 @@ export default function AntimodeApp() {
         }),
       });
       const data = await res.json();
+      if (!res.ok) {
+        setLastCallFailed(true);
+        setLastCallStatus(res.status);
+        setApiError({
+          message: data.error || "Interview step failed",
+          stageName: "Stage 1: Diagnostic Interview",
+          status: res.status,
+          retryFn: () => handleInterviewNext(answerText),
+        });
+        return;
+      }
+      setLastCallFailed(false);
+      setLastCallStatus(undefined);
+      setApiError(null);
       if (data.status === "asking") {
         setActiveQuestion(data.question);
         setCurrentAnswer("");
@@ -117,8 +172,14 @@ export default function AntimodeApp() {
       }
       // Refresh session
       await refreshSession(session.id);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Interview step failed:", err);
+      setLastCallFailed(true);
+      setApiError({
+        message: err.message || "Interview step failed",
+        stageName: "Stage 1: Diagnostic Interview",
+        retryFn: () => handleInterviewNext(answerText),
+      });
     } finally {
       setLoading(false);
     }
@@ -134,13 +195,10 @@ export default function AntimodeApp() {
     const interval = setInterval(() => {
       setStreamProgress((prev) => {
         if (!prev) return null;
-        if (prev.step >= 30) {
-          clearInterval(interval);
-          return prev;
-        }
-        return { step: Math.min(30, prev.step + 5), total: 30 };
+        if (prev.step >= 28) return prev;
+        return { step: Math.min(28, prev.step + 5), total: 30 };
       });
-    }, 150);
+    }, 400);
 
     try {
       const res = await fetch("/api/generic-map", {
@@ -150,10 +208,30 @@ export default function AntimodeApp() {
       });
       const data = await res.json();
       clearInterval(interval);
+      if (!res.ok) {
+        setLastCallFailed(true);
+        setLastCallStatus(res.status);
+        setApiError({
+          message: data.error || "Generic map generation failed",
+          stageName: "Stage 2: Generic Baseline Map",
+          status: res.status,
+          retryFn: () => handleGenerateGenericMap(),
+        });
+        return;
+      }
+      setLastCallFailed(false);
+      setLastCallStatus(undefined);
+      setApiError(null);
       setStreamProgress({ step: 30, total: 30 });
       await refreshSession(session.id);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Generic map generation failed:", err);
+      setLastCallFailed(true);
+      setApiError({
+        message: err.message || "Generic map generation failed",
+        stageName: "Stage 2: Generic Baseline Map",
+        retryFn: () => handleGenerateGenericMap(),
+      });
     } finally {
       clearInterval(interval);
       setStreamProgress(null);
@@ -172,6 +250,20 @@ export default function AntimodeApp() {
         body: JSON.stringify({ session_id: session.id }),
       });
       const data = await res.json();
+      if (!res.ok) {
+        setLastCallFailed(true);
+        setLastCallStatus(res.status);
+        setApiError({
+          message: data.error || "Divergence failed",
+          stageName: "Stage 3-5: Divergence & Scoring",
+          status: res.status,
+          retryFn: () => handleDiverge(),
+        });
+        return;
+      }
+      setLastCallFailed(false);
+      setLastCallStatus(undefined);
+      setApiError(null);
       if (data.directions?.[0]) {
         setSelectedDirectionId(data.directions[0].id);
       }
@@ -179,8 +271,14 @@ export default function AntimodeApp() {
 
       // Trigger collision check automatically
       handleCheckCollisions();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Diverge failed:", err);
+      setLastCallFailed(true);
+      setApiError({
+        message: err.message || "Divergence failed",
+        stageName: "Stage 3-5: Divergence & Scoring",
+        retryFn: () => handleDiverge(),
+      });
     } finally {
       setLoading(false);
     }
@@ -199,9 +297,30 @@ export default function AntimodeApp() {
           patch,
         }),
       });
+      const data = await res.json();
+      if (!res.ok) {
+        setLastCallFailed(true);
+        setLastCallStatus(res.status);
+        setApiError({
+          message: data.error || "Direction edit failed",
+          stageName: "Stage 5: Direction Customization & Re-Score",
+          status: res.status,
+          retryFn: () => handleEditDirection(directionId, patch),
+        });
+        return;
+      }
+      setLastCallFailed(false);
+      setLastCallStatus(undefined);
+      setApiError(null);
       await refreshSession(session.id);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to edit direction:", err);
+      setLastCallFailed(true);
+      setApiError({
+        message: err.message || "Direction edit failed",
+        stageName: "Stage 5: Direction Customization & Re-Score",
+        retryFn: () => handleEditDirection(directionId, patch),
+      });
     }
   };
 
@@ -215,12 +334,32 @@ export default function AntimodeApp() {
         body: JSON.stringify({ session_id: session.id }),
       });
       const data = await res.json();
+      if (!res.ok) {
+        setLastCallFailed(true);
+        setLastCallStatus(res.status);
+        setApiError({
+          message: data.error || "Collision check failed",
+          stageName: "Stage 6: Trademark Collision Sentinel",
+          status: res.status,
+          retryFn: () => handleCheckCollisions(),
+        });
+        return;
+      }
+      setLastCallFailed(false);
+      setLastCallStatus(undefined);
+      setApiError(null);
       if (data.collisions) {
         setCollisions(data.collisions);
       }
       await refreshSession(session.id);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Collision check failed:", err);
+      setLastCallFailed(true);
+      setApiError({
+        message: err.message || "Collision check failed",
+        stageName: "Stage 6: Trademark Collision Sentinel",
+        retryFn: () => handleCheckCollisions(),
+      });
     }
   };
 
@@ -241,9 +380,30 @@ export default function AntimodeApp() {
           rounds: 3,
         }),
       });
+      const data = await res.json();
+      if (!res.ok) {
+        setLastCallFailed(true);
+        setLastCallStatus(res.status);
+        setApiError({
+          message: data.error || "Red-team execution failed",
+          stageName: "Stage 7: Adversarial Red-Team",
+          status: res.status,
+          retryFn: () => handleRunRedTeam(directionId),
+        });
+        return;
+      }
+      setLastCallFailed(false);
+      setLastCallStatus(undefined);
+      setApiError(null);
       await refreshSession(session.id);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Red-team execution failed:", err);
+      setLastCallFailed(true);
+      setApiError({
+        message: err.message || "Red-team execution failed",
+        stageName: "Stage 7: Adversarial Red-Team",
+        retryFn: () => handleRunRedTeam(directionId),
+      });
     } finally {
       setLoading(false);
     }
@@ -265,9 +425,30 @@ export default function AntimodeApp() {
           direction_id: targetDirId,
         }),
       });
+      const data = await res.json();
+      if (!res.ok) {
+        setLastCallFailed(true);
+        setLastCallStatus(res.status);
+        setApiError({
+          message: data.error || "Delivery failed",
+          stageName: "Stage 8: Delivery & Production Launch",
+          status: res.status,
+          retryFn: () => handleDeliverKit(directionId),
+        });
+        return;
+      }
+      setLastCallFailed(false);
+      setLastCallStatus(undefined);
+      setApiError(null);
       await refreshSession(session.id);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Delivery failed:", err);
+      setLastCallFailed(true);
+      setApiError({
+        message: err.message || "Delivery failed",
+        stageName: "Stage 8: Delivery & Production Launch",
+        retryFn: () => handleDeliverKit(directionId),
+      });
     } finally {
       setLoading(false);
     }
@@ -277,6 +458,17 @@ export default function AntimodeApp() {
     try {
       const res = await fetch(`/api/session?id=${id}`);
       const data = await res.json();
+      if (!res.ok) {
+        setLastCallFailed(true);
+        return;
+      }
+      if (data.is_mock_mode !== undefined) {
+        setSystemMode({
+          is_mock_mode: data.is_mock_mode,
+          provider: data.provider,
+          model: data.model,
+        });
+      }
       if (data.session) {
         setSession(data.session);
         if (!selectedDirectionId && data.session.directions?.[0]) {
@@ -285,6 +477,7 @@ export default function AntimodeApp() {
       }
     } catch (err) {
       console.error("Failed to refresh session:", err);
+      setLastCallFailed(true);
     }
   };
 
@@ -298,17 +491,31 @@ export default function AntimodeApp() {
         {/* Brand Header */}
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-5">
           <div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2.5">
               <span className="text-2xl sm:text-3xl font-black tracking-tighter uppercase text-white font-mono flex items-center gap-1.5">
                 <span className="text-blue-500">//</span> ANTIMODE
               </span>
               <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-950 text-blue-300 border border-blue-800">
                 Brand Engine v1.0
               </span>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 flex items-center gap-1">
-                <Zap className="w-3 h-3 text-emerald-400" />
-                <span>Deterministic Mode</span>
-              </span>
+
+              {/* Step 6: Clear, visible LIVE / MOCK / FAILED badge */}
+              {systemMode.is_mock_mode ? (
+                <span className="text-[11px] font-mono font-bold px-2.5 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-700/80 flex items-center gap-1.5 shadow-sm">
+                  <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+                  <span>MOCK MODE (Fixtures)</span>
+                </span>
+              ) : lastCallFailed ? (
+                <span className="text-[11px] font-mono font-bold px-2.5 py-0.5 rounded bg-rose-950/90 text-rose-300 border border-rose-600 flex items-center gap-1.5 shadow-sm animate-pulse">
+                  <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+                  <span>LIVE CALL FAILED{lastCallStatus ? ` (HTTP ${lastCallStatus})` : ""}</span>
+                </span>
+              ) : (
+                <span className="text-[11px] font-mono font-bold px-2.5 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-700 flex items-center gap-1.5 shadow-sm">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span>LIVE AI MODE ({systemMode.provider})</span>
+                </span>
+              )}
             </div>
             <p className="text-xs text-slate-400 mt-1 max-w-2xl font-mono">
               Maps what generic LLMs produce for an idea, forces the brand outside that zone,
@@ -332,6 +539,51 @@ export default function AntimodeApp() {
             ))}
           </div>
         </header>
+
+        {/* Error Banner with Retry Button */}
+        {apiError && (
+          <div className="bg-rose-950/90 border-2 border-rose-600 rounded-xl p-4 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-rose-100 font-mono text-xs">
+            <div className="flex items-start sm:items-center gap-3">
+              <div className="p-2 bg-rose-900 rounded-lg text-rose-300 shrink-0">
+                <AlertTriangle className="w-5 h-5 text-rose-400" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 font-bold text-rose-200 uppercase tracking-wide">
+                  <span>{apiError.stageName} Failed</span>
+                  {apiError.status && (
+                    <span className="px-1.5 py-0.5 rounded bg-rose-900/80 text-[10px] text-rose-300 border border-rose-700">
+                      HTTP {apiError.status}
+                    </span>
+                  )}
+                </div>
+                <p className="text-slate-300 mt-0.5">{apiError.message}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+              {apiError.retryFn && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const fn = apiError.retryFn;
+                    setApiError(null);
+                    fn?.();
+                  }}
+                  className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg font-bold flex items-center gap-1.5 transition-colors shadow"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Retry</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setApiError(null)}
+                className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg font-semibold transition-colors"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Global Pipeline Stage Tracker */}
         {session && (

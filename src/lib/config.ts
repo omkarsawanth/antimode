@@ -1,3 +1,7 @@
+export function getGeminiApiKey(): string | undefined {
+  return process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+}
+
 export const CONFIG = {
   // Thresholds as per SPEC section 6
   GENERICNESS_MAX_THRESHOLD: 55, // genericness <= 55
@@ -11,14 +15,18 @@ export const CONFIG = {
   BASELINE_SAMPLE_COUNT: 30,
 
   // LLM Config
-  DEFAULT_LLM_MODEL: process.env.LLM_MODEL || "gemini-2.5-flash",
-  DEFAULT_EMBEDDING_MODEL: process.env.EMBEDDING_MODEL || "text-embedding-004",
+  get DEFAULT_LLM_MODEL(): string {
+    return process.env.LLM_MODEL || "gemini-3.6-flash";
+  },
+  get DEFAULT_EMBEDDING_MODEL(): string {
+    return process.env.EMBEDDING_MODEL || "gemini-embedding-2";
+  },
 
   // Mock mode check
   get isMockMode(): boolean {
     if (process.env.MOCK_MODE === "true") return true;
     if (process.env.MOCK_MODE === "false") return false;
     // If no API key configured, automatically default to mock mode so app runs out of the box
-    return !process.env.GEMINI_API_KEY && !process.env.OPENAI_API_KEY;
-  }
+    return !getGeminiApiKey() && !process.env.OPENAI_API_KEY;
+  },
 };

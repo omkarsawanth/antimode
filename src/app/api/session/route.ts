@@ -1,6 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSession, getSession, saveSession } from "@/lib/session";
 import { getFixtureForIdea } from "@/lib/fixtures";
+import { CONFIG } from "@/lib/config";
+
+function getSystemInfo() {
+  const isMock = CONFIG.isMockMode;
+  const provider = process.env.GEMINI_API_KEY ? "Gemini" : process.env.OPENAI_API_KEY ? "OpenAI" : "None";
+  return {
+    is_mock_mode: isMock,
+    provider: isMock ? "Mock / Fixture" : provider,
+    model: CONFIG.DEFAULT_LLM_MODEL,
+  };
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -25,7 +36,10 @@ export async function POST(req: NextRequest) {
       saveSession(session);
     }
 
-    return NextResponse.json({ session });
+    return NextResponse.json({
+      session,
+      ...getSystemInfo(),
+    });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
@@ -44,5 +58,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Session not found" }, { status: 404 });
   }
 
-  return NextResponse.json({ session });
+  return NextResponse.json({
+    session,
+    ...getSystemInfo(),
+  });
 }

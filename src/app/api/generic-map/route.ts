@@ -25,39 +25,35 @@ export async function POST(req: NextRequest) {
 
     const fixture = getFixtureForIdea(session.brief.idea);
 
-    // Prompt for baseline concepts
-    const prompt = renderPrompt("generic_baseline", {
-      idea: session.brief.idea,
-      problem: session.brief.problem,
-      audience: session.brief.audience.primary,
-      value: session.brief.value,
-      count: 30,
-    });
+    const totalSamples = 30;
+    const batchSize = 5;
+    const allSamples: any[] = [];
 
-    const samples = await callLLM({
-      prompt,
-      schema: BaselineSamplesResponseSchema,
-      temperature: 1.0,
-      mockFallback: () => {
-        // Return 30 samples by expanding fixture samples if needed
-        const base = fixture.generic_map.samples;
-        const expanded = [...base];
-        const prefixes = ["Omni", "Hyper", "Neo", "Core", "Meta", "Smart", "Flex", "True", "Prime", "Apex"];
-        const suffixes = ["Flow", "Sync", "Hub", "Lab", "Zone", "Base", "Net", "Sphere", "Pulse", "Box"];
-        while (expanded.length < 30) {
-          const i = expanded.length;
-          const p = prefixes[i % prefixes.length];
-          const s = suffixes[Math.floor(i / prefixes.length) % suffixes.length];
-          expanded.push({
-            name: `${p}${s}`,
-            tagline: `The modern platform to empower your work`,
-            tone_words: ["innovative", "seamless", "smart"],
-            color_mood: "tech blue and clean white",
-          });
-        }
-        return expanded.slice(0, 30);
-      },
-    });
+    // Run 30-sample generation in batches of 5
+    for (let b = 0; b < totalSamples / batchSize; b++) {
+      const prompt = renderPrompt("generic_baseline", {
+        idea: session.brief.idea,
+        problem: session.brief.problem,
+        audience: session.brief.audience.primary,
+        value: session.brief.value,
+        count: batchSize,
+      });
+
+      const batchSamples = await callLLM({
+        prompt: `${prompt}\n\n[Batch ${b + 1} of ${totalSamples / batchSize}]`,
+        schema: BaselineSamplesResponseSchema,
+        temperature: 1.0,
+        mockFallback: () => {
+          const base = fixture.generic_map.samples;
+          const sliceStart = (b * batchSize) % base.length;
+          return base.slice(sliceStart, sliceStart + batchSize);
+        },
+      });
+
+      allSamples.push(...batchSamples);
+    }
+
+    const samples = allSamples.slice(0, 30);
 
     // Embed all samples
     const sampleTexts = samples.map((s) => `${s.name} | ${s.tagline} | ${s.tone_words.join(", ")}`);
@@ -112,6 +108,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ generic_map });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    const status = err.status && typeof err.status === "number" ? err.status : 500;
+    return NextResponse.json({ error: err.message, status }, { status });
   }
 }

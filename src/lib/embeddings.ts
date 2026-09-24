@@ -1,4 +1,5 @@
-import { CONFIG } from "./config";
+import { CONFIG, getGeminiApiKey } from "./config";
+import { LLMError } from "./llm";
 import crypto from "crypto";
 
 export function cosineSimilarity(vecA: number[], vecB: number[]): number {
@@ -20,7 +21,7 @@ export function cosineSimilarity(vecA: number[], vecB: number[]): number {
   return dotProduct / denominator;
 }
 
-// Fallback deterministic pseudo-semantic embedding vector (64 dimensions)
+// Fallback deterministic pseudo-semantic embedding vector (64 dimensions) - ONLY for MOCK_MODE=true
 export function getLocalEmbedding(text: string, dim: number = 64): number[] {
   const clean = text.toLowerCase().replace(/[^a-z0-9\s]/g, " ");
   const words = clean.split(/\s+/).filter(Boolean);
@@ -61,32 +62,82 @@ export function getLocalEmbedding(text: string, dim: number = 64): number[] {
 
 // Generate embedding for text
 export async function getEmbedding(text: string): Promise<number[]> {
-  if (!CONFIG.isMockMode && process.env.GEMINI_API_KEY) {
-    try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${process.env.GEMINI_API_KEY}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            model: "models/text-embedding-004",
-            content: { parts: [{ text }] },
-          }),
-        }
-      );
+  // Only return local fake/hash vector when explicitly in MOCK_MODE
+  if (CONFIG.isMockMode) {
+    return getLocalEmbedding(text);
+  }
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.embedding?.values) {
-          return data.embedding.values as number[];
+  const apiKey = getGeminiApiKey();
+  const model = CONFIG.DEFAULT_EMBEDDING_MODEL;
+
+  if (!apiKey) {
+    throw new LLMError(
+      "No API key configured for embeddings. Provide GEMINI_API_KEY or GOOGLE_API_KEY.",
+      401,
+      "gemini",
+      model
+    );
+  }
+
+  const maxRetries = 3;
+  let res: Response | null = null;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:embedContent?key=${apiKey}`;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: `models/${model}`,
+          content: { parts: [{ text }] },
+        }),
+      });
+
+      if (res.status === 429) {
+        if (attempt < maxRetries - 1) {
+          const delay = Math.pow(2, attempt) * 1500 + Math.random() * 500;
+          console.warn(
+            `[EMBEDDING] HTTP 429 Rate Limit. Retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${maxRetries})...`
+          );
+          await new Promise((r) => setTimeout(r, delay));
+          continue;
         }
+        throw new LLMError("Gemini embedding rate limit exceeded (HTTP 429)", 429, "gemini", model);
       }
-    } catch (err) {
-      console.warn("Gemini embedding API failed, using fallback embedding:", err);
+      break;
+    } catch (err: any) {
+      if (err instanceof LLMError) throw err;
+      if (attempt < maxRetries - 1) {
+        const delay = Math.pow(2, attempt) * 1000;
+        await new Promise((r) => setTimeout(r, delay));
+        continue;
+      }
+      throw new LLMError(
+        err.message || "Failed to communicate with Gemini Embedding API",
+        500,
+        "gemini",
+        model
+      );
     }
   }
 
-  return getLocalEmbedding(text);
+  if (!res || !res.ok) {
+    const errText = res ? await res.text() : "No response";
+    throw new LLMError(
+      `Gemini embedding API error ${res?.status || 500}: ${errText.substring(0, 300)}`,
+      res?.status || 500,
+      "gemini",
+      model
+    );
+  }
+
+  const data = await res.json();
+  if (!data.embedding?.values) {
+    throw new LLMError("Invalid embedding response values from Gemini API", 502, "gemini", model);
+  }
+
+  return data.embedding.values as number[];
 }
 
 // Batch embed multiple texts
@@ -114,12 +165,10 @@ export function projectTo2D(vectors: number[][]): { x: number; y: number }[] {
   // Power iteration for top 2 principal components
   function powerIteration(data: number[][], numIterations: number = 30): number[] {
     let p = new Array(dim).fill(0).map(() => Math.random() - 0.5);
-    // Normalize initial vector
     let norm = Math.sqrt(p.reduce((acc, val) => acc + val * val, 0));
     p = p.map((val) => val / (norm || 1));
 
     for (let iter = 0; iter < numIterations; iter++) {
-      // Multiply: C * p = (1/n) * X^T * (X * p)
       const Xp = data.map((row) => row.reduce((sum, val, idx) => sum + val * p[idx], 0));
       const nextP = new Array(dim).fill(0);
       for (let j = 0; j < dim; j++) {

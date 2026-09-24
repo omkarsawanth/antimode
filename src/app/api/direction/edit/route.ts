@@ -190,6 +190,7 @@ export async function POST(req: NextRequest) {
       blind_reads: blindReads,
     });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    const status = err.status && typeof err.status === "number" ? err.status : 500;
+    return NextResponse.json({ error: err.message, status }, { status });
   }
 }

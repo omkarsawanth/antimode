@@ -14,12 +14,14 @@ export function GuardianBox({ sessionId, spec, brandName = "Brand" }: GuardianBo
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<GuardianResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleAudit = async (copyToCheck?: string) => {
     const textToCheck = copyToCheck !== undefined ? copyToCheck : text;
     if (!textToCheck.trim()) return;
 
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch("/api/guardian", {
         method: "POST",
@@ -30,9 +32,16 @@ export function GuardianBox({ sessionId, spec, brandName = "Brand" }: GuardianBo
         }),
       });
       const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || `Guardian audit failed (HTTP ${res.status})`);
+        setResult(null);
+        return;
+      }
       setResult(data);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Guardian audit failed:", err);
+      setError(err.message || "Guardian audit failed");
+      setResult(null);
     } finally {
       setLoading(false);
     }
@@ -114,6 +123,23 @@ export function GuardianBox({ sessionId, spec, brandName = "Brand" }: GuardianBo
           </button>
         </div>
       </div>
+
+      {/* Error Display */}
+      {error && (
+        <div className="bg-rose-950/80 border border-rose-700 rounded-lg p-3 text-xs font-mono flex items-center justify-between text-rose-200">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+            <span>{error}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => handleAudit()}
+            className="px-2.5 py-1 bg-rose-700 hover:bg-rose-600 text-white rounded font-bold transition-colors shrink-0 ml-2"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       {/* Result Display */}
       {result && (
