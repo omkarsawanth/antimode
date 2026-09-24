@@ -6,7 +6,6 @@ import { callLLM } from "@/lib/llm";
 import { DirectionSchema, Direction, Scores, BlindRead, BlindReadSchema } from "@/types/schemas";
 import { getFixtureForIdea } from "@/lib/fixtures";
 import { calculateGenericnessScore, calculatePerceptionGap, isPass, getCliches } from "@/lib/scoring";
-import { getEmbedding, projectTo2D } from "@/lib/embeddings";
 
 const DivergeResponseSchema = z.array(DirectionSchema);
 
@@ -177,16 +176,17 @@ export async function POST(req: NextRequest) {
     }
 
     // 6. Overlay Candidate Points on 2D Scatter Plot
-    // Invert/offset coordinates relative to centroid so they sit noticeably outside
-    const centroidX = session.generic_map.centroid[0] || 0;
-    const centroidY = session.generic_map.centroid[1] || 0;
+    // Offset coordinates relative to 2D baseline cluster so they sit noticeably outside
+    const baselinePts = session.generic_map.embedding_points.filter((p) => !p.is_candidate);
+    const mean2DX = baselinePts.length > 0 ? baselinePts.reduce((acc, p) => acc + p.x, 0) / baselinePts.length : 0;
+    const mean2DY = baselinePts.length > 0 ? baselinePts.reduce((acc, p) => acc + p.y, 0) / baselinePts.length : 0;
 
     const candidatePoints = refinedDirections.map((dir, idx) => {
       // Divergence offsets
       const angle = (idx * (2 * Math.PI)) / 3 + 0.5;
       const distance = 45 + idx * 8;
-      const x = Math.round((centroidX + Math.cos(angle) * distance) * 10) / 10;
-      const y = Math.round((centroidY + Math.sin(angle) * distance) * 10) / 10;
+      const x = Math.round((mean2DX + Math.cos(angle) * distance) * 10) / 10;
+      const y = Math.round((mean2DY + Math.sin(angle) * distance) * 10) / 10;
 
       return {
         id: 100 + idx + 1,

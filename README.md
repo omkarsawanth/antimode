@@ -208,13 +208,17 @@ npm start
 Create `.env` based on `.env.example`:
 
 ```bash
-# Switch to false to use live Gemini or OpenAI APIs (defaults to mock if keys absent)
+# Switch to false to use live APIs (defaults to mock if keys absent)
 MOCK_MODE=true
 
-# Google Gemini API (optional, for live model & embedding calls)
+# Google Gemini API (for LLM reasoning & generation)
 GEMINI_API_KEY=your_gemini_api_key_here
-LLM_MODEL=gemini-2.5-flash
-EMBEDDING_MODEL=text-embedding-004
+LLM_MODEL=gemini-3.6-flash
+LLM_FALLBACK_MODEL=
+
+# OpenRouter API (for Nemotron 2048-dim embeddings)
+OPENROUTER_API_KEY=your_openrouter_api_key_here
+EMBEDDING_MODEL=nvidia/nemotron-3-embed-1b:free
 
 # OpenAI API (optional fallback)
 OPENAI_API_KEY=your_openai_api_key_here

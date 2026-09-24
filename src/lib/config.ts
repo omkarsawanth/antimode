@@ -2,6 +2,10 @@ export function getGeminiApiKey(): string | undefined {
   return process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 }
 
+export function getOpenRouterApiKey(): string | undefined {
+  return process.env.OPENROUTER_API_KEY;
+}
+
 export const CONFIG = {
   // Thresholds as per SPEC section 6
   GENERICNESS_MAX_THRESHOLD: 55, // genericness <= 55
@@ -22,7 +26,7 @@ export const CONFIG = {
     return process.env.LLM_FALLBACK_MODEL || undefined;
   },
   get DEFAULT_EMBEDDING_MODEL(): string {
-    return process.env.EMBEDDING_MODEL || "gemini-embedding-2";
+    return process.env.EMBEDDING_MODEL || "nvidia/nemotron-3-embed-1b:free";
   },
 
   // Mock mode check
@@ -30,6 +34,6 @@ export const CONFIG = {
     if (process.env.MOCK_MODE === "true") return true;
     if (process.env.MOCK_MODE === "false") return false;
     // If no API key configured, automatically default to mock mode so app runs out of the box
-    return !getGeminiApiKey() && !process.env.OPENAI_API_KEY;
+    return !getGeminiApiKey() && !getOpenRouterApiKey() && !process.env.OPENAI_API_KEY;
   },
 };

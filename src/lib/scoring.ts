@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { Direction, GenericMap, Scores, BlindRead, Brief } from "@/types/schemas";
-import { cosineSimilarity, getEmbedding } from "./embeddings";
+import { cosineSimilarity, getEmbeddings } from "./embeddings";
 import { CONFIG } from "./config";
 
 interface ClichesData {
@@ -47,15 +47,14 @@ export async function calculateGenericnessScore(
   // Candidates tone words can be extracted from personality traits
   const candidateToneWords = direction.personality.traits.map((t) => t.trait);
   const candidateText = `${direction.name} | ${direction.tagline} | ${candidateToneWords.join(", ")}`;
-  const candidateEmbedding = await getEmbedding(candidateText);
-
-  // Embed baseline samples
-  const baselineEmbeddings = await Promise.all(
-    genericMap.samples.map(async (sample) => {
-      const sampleText = `${sample.name} | ${sample.tagline} | ${sample.tone_words.join(", ")}`;
-      return getEmbedding(sampleText);
-    })
+  const sampleTexts = genericMap.samples.map(
+    (sample) => `${sample.name} | ${sample.tagline} | ${sample.tone_words.join(", ")}`
   );
+
+  // Batch embed candidate and all baseline samples in ONE batched request
+  const allEmbeddings = await getEmbeddings([candidateText, ...sampleTexts]);
+  const candidateEmbedding = allEmbeddings[0];
+  const baselineEmbeddings = allEmbeddings.slice(1);
 
   // 2. Compute cosine similarity to all baseline samples
   const similarities = baselineEmbeddings.map((bEmbed) => cosineSimilarity(candidateEmbedding, bEmbed));

@@ -65,12 +65,14 @@ export async function POST(req: NextRequest) {
     const sampleTexts = samples.map((s) => `${s.name} | ${s.tagline} | ${s.tone_words.join(", ")}`);
     const embeddings = await getEmbeddings(sampleTexts);
 
-    // Compute centroid in original embedding space
-    const dim = embeddings[0]?.length || 64;
-    const centroid = new Array(dim).fill(0);
-    for (const emb of embeddings) {
-      for (let d = 0; d < dim; d++) {
-        centroid[d] += emb[d] / embeddings.length;
+    // Compute centroid in original embedding space (works dynamically for any dimension e.g. 2048)
+    const dim = embeddings[0]?.length || 0;
+    const centroid = dim > 0 ? new Array(dim).fill(0) : [];
+    if (dim > 0 && embeddings.length > 0) {
+      for (const emb of embeddings) {
+        for (let d = 0; d < dim; d++) {
+          centroid[d] += emb[d] / embeddings.length;
+        }
       }
     }
 

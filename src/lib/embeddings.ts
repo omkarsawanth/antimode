@@ -1,15 +1,27 @@
-import { CONFIG, getGeminiApiKey } from "./config";
+import { CONFIG, getOpenRouterApiKey } from "./config";
 import { LLMError } from "./llm";
 import crypto from "crypto";
 
+// Call counter per run
+let embeddingCallCount = 0;
+
+export function getEmbeddingCallCount(): number {
+  return embeddingCallCount;
+}
+
+export function resetEmbeddingCallCount(): void {
+  embeddingCallCount = 0;
+}
+
 export function cosineSimilarity(vecA: number[], vecB: number[]): number {
-  if (vecA.length !== vecB.length || vecA.length === 0) return 0;
+  if (!vecA || !vecB || vecA.length === 0 || vecB.length === 0) return 0;
+  const len = Math.min(vecA.length, vecB.length);
 
   let dotProduct = 0;
   let normA = 0;
   let normB = 0;
 
-  for (let i = 0; i < vecA.length; i++) {
+  for (let i = 0; i < len; i++) {
     dotProduct += vecA[i] * vecB[i];
     normA += vecA[i] * vecA[i];
     normB += vecB[i] * vecB[i];
@@ -21,7 +33,7 @@ export function cosineSimilarity(vecA: number[], vecB: number[]): number {
   return dotProduct / denominator;
 }
 
-// Fallback deterministic pseudo-semantic embedding vector (64 dimensions) - ONLY for MOCK_MODE=true
+// Fallback deterministic pseudo-semantic embedding vector (arbitrary dimensions) - ONLY for MOCK_MODE=true
 export function getLocalEmbedding(text: string, dim: number = 64): number[] {
   const clean = text.toLowerCase().replace(/[^a-z0-9\s]/g, " ");
   const words = clean.split(/\s+/).filter(Boolean);
@@ -60,57 +72,64 @@ export function getLocalEmbedding(text: string, dim: number = 64): number[] {
   return vec;
 }
 
-// Generate embedding for text
-export async function getEmbedding(text: string): Promise<number[]> {
-  // Only return local fake/hash vector when explicitly in MOCK_MODE
+// Generate embeddings for multiple texts in ONE batched request via OpenRouter Nemotron
+export async function getEmbeddings(texts: string[]): Promise<number[][]> {
+  if (texts.length === 0) return [];
+
+  // In MOCK_MODE, return local hash vectors
   if (CONFIG.isMockMode) {
-    return getLocalEmbedding(text);
+    return texts.map((t) => getLocalEmbedding(t));
   }
 
-  const apiKey = getGeminiApiKey();
+  const apiKey = getOpenRouterApiKey();
   const model = CONFIG.DEFAULT_EMBEDDING_MODEL;
 
+  // In LIVE mode, NEVER fall back to hash vectors! Throw typed LLMError
   if (!apiKey) {
     throw new LLMError(
-      "No API key configured for embeddings. Provide GEMINI_API_KEY or GOOGLE_API_KEY.",
+      "No OpenRouter API key configured. Provide OPENROUTER_API_KEY in .env.local",
       401,
-      "gemini",
+      "openrouter",
       model
     );
   }
 
-  const RETRYABLE_STATUS_CODES = [429, 500, 502, 503, 504];
   const maxRetries = 4;
-  let res: Response | null = null;
   let lastStatus = 500;
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:embedContent?key=${apiKey}`;
+  const startTime = Date.now();
+  const endpoint = "https://openrouter.ai/api/v1/embeddings";
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
-      res = await fetch(url, {
+      const res = await fetch(endpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
         body: JSON.stringify({
-          model: `models/${model}`,
-          content: { parts: [{ text }] },
+          model,
+          input: texts,
         }),
       });
 
-      if (RETRYABLE_STATUS_CODES.includes(res.status)) {
+      const isRetryable = res.status === 429 || (res.status >= 500 && res.status <= 504);
+
+      if (isRetryable) {
         lastStatus = res.status;
         if (attempt < maxRetries - 1) {
           const delay = 2000 * Math.pow(2, attempt) + Math.random() * 1000;
           console.warn(
-            `[EMBEDDING] HTTP ${res.status} error. Retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${maxRetries - 1})...`
+            `[EMBEDDING] HTTP ${res.status} error from OpenRouter (${model}). Retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${maxRetries - 1})...`
           );
           await new Promise((r) => setTimeout(r, delay));
           continue;
         }
         const errText = await res.text();
         throw new LLMError(
-          `Gemini embedding error (HTTP ${res.status}): ${errText.substring(0, 300)}`,
+          `OpenRouter embedding error (HTTP ${res.status}): ${errText.substring(0, 300)}`,
           res.status,
-          "gemini",
+          "openrouter",
           model
         );
       }
@@ -118,73 +137,88 @@ export async function getEmbedding(text: string): Promise<number[]> {
       if (!res.ok) {
         const errText = await res.text();
         throw new LLMError(
-          `Gemini embedding API error ${res.status}: ${errText.substring(0, 300)}`,
+          `OpenRouter embedding API error ${res.status}: ${errText.substring(0, 300)}`,
           res.status,
-          "gemini",
+          "openrouter",
           model
         );
       }
 
-      break;
+      const data = await res.json();
+      if (!data.data || !Array.isArray(data.data)) {
+        throw new LLMError(
+          "Invalid response format from OpenRouter embeddings API",
+          502,
+          "openrouter",
+          model
+        );
+      }
+
+      // Sort by index to maintain input order
+      const sorted = [...data.data].sort((a: any, b: any) => (a.index ?? 0) - (b.index ?? 0));
+      const embeddings: number[][] = sorted.map((item: any) => item.embedding as number[]);
+
+      if (embeddings.length !== texts.length) {
+        throw new LLMError(
+          `OpenRouter returned ${embeddings.length} embeddings for ${texts.length} inputs`,
+          502,
+          "openrouter",
+          model
+        );
+      }
+
+      embeddingCallCount++;
+      const elapsed = Date.now() - startTime;
+      const dim = embeddings[0]?.length || 0;
+      console.log(
+        `[EMBEDDING] Batch call #${embeddingCallCount} (${texts.length} texts, dim=${dim}) | PROVIDER: openrouter | MODEL: ${model} | LATENCY: ${elapsed}ms`
+      );
+
+      return embeddings;
     } catch (err: any) {
       if (err instanceof LLMError) throw err;
       if (attempt < maxRetries - 1) {
         const delay = 2000 * Math.pow(2, attempt) + Math.random() * 1000;
         console.warn(
-          `[EMBEDDING] Fetch error: ${err.message}. Retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${maxRetries - 1})...`
+          `[EMBEDDING] Network/Fetch error: ${err.message}. Retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${maxRetries - 1})...`
         );
         await new Promise((r) => setTimeout(r, delay));
         continue;
       }
       throw new LLMError(
-        err.message || "Failed to communicate with Gemini Embedding API",
+        err.message || "Failed to communicate with OpenRouter Embeddings API",
         lastStatus || 500,
-        "gemini",
+        "openrouter",
         model
       );
     }
   }
 
-  if (!res || !res.ok) {
-    const errText = res ? await res.text() : "No response";
-    throw new LLMError(
-      `Gemini embedding API error ${res?.status || lastStatus}: ${errText.substring(0, 300)}`,
-      res?.status || lastStatus,
-      "gemini",
-      model
-    );
-  }
-
-  const data = await res.json();
-  if (!data.embedding?.values) {
-    throw new LLMError("Invalid embedding response values from Gemini API", 502, "gemini", model);
-  }
-
-  return data.embedding.values as number[];
+  throw new LLMError(
+    `Exhausted retries calling OpenRouter Embeddings API (${model})`,
+    lastStatus,
+    "openrouter",
+    model
+  );
 }
 
-// Batch embed multiple texts in batches of 3 with short delays
-export async function getEmbeddings(texts: string[], concurrency: number = 3): Promise<number[][]> {
-  const results: number[][] = [];
-  for (let i = 0; i < texts.length; i += concurrency) {
-    if (i > 0) {
-      await new Promise((r) => setTimeout(r, 200));
-    }
-    const batch = texts.slice(i, i + concurrency);
-    const batchResults = await Promise.all(batch.map((t) => getEmbedding(t)));
-    results.push(...batchResults);
-  }
-  return results;
+// Generate embedding for single text
+export async function getEmbedding(text: string): Promise<number[]> {
+  const [emb] = await getEmbeddings([text]);
+  return emb;
 }
 
 // Dimensionality reduction: Classical Multidimensional Scaling (MDS) / PCA to 2D
+// Works dynamically for any vector dimension (64, 768, 1536, 2048, etc.)
 export function projectTo2D(vectors: number[][]): { x: number; y: number }[] {
   const n = vectors.length;
   if (n === 0) return [];
   if (n === 1) return [{ x: 0, y: 0 }];
 
+  const dim = vectors[0]?.length || 0;
+  if (dim === 0) return vectors.map(() => ({ x: 0, y: 0 }));
+
   // Center the data
-  const dim = vectors[0].length;
   const mean = new Array(dim).fill(0);
   for (let i = 0; i < n; i++) {
     for (let d = 0; d < dim; d++) {
