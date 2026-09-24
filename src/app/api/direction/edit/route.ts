@@ -83,43 +83,45 @@ export async function POST(req: NextRequest) {
       palette_summary: paletteSummary,
     });
 
-    const blindReads: BlindRead[] = [];
-    for (let r = 1; r <= 3; r++) {
-      const readResult = await callLLM({
-        prompt: `${blindPrompt}\n\n[Re-scored reader #${r}]`,
-        schema: BlindReadSchema,
-        temperature: 0.7,
-        stage: 5,
-        maxTokens: 1500,
-        mockFallback: () => {
-          // If the edit is deliberately vague (test requirement #3 in SPEC Section 11):
-          const isVague = updatedDir.tagline.toLowerCase().includes("something for people") ||
-                          updatedDir.name.toLowerCase().includes("vague") ||
-                          updatedDir.tagline.toLowerCase().includes("solution");
-          if (isVague) {
+    const blindReads: BlindRead[] = await Promise.all(
+      [1, 2, 3].map(async (r) => {
+        const readResult = await callLLM({
+          prompt: `${blindPrompt}\n\n[Re-scored reader #${r}]`,
+          schema: BlindReadSchema,
+          temperature: 0.7,
+          stage: 5,
+          maxTokens: 1500,
+          mockFallback: () => {
+            // If the edit is deliberately vague (test requirement #3 in SPEC Section 11):
+            const isVague =
+              updatedDir.tagline.toLowerCase().includes("something for people") ||
+              updatedDir.name.toLowerCase().includes("vague") ||
+              updatedDir.tagline.toLowerCase().includes("solution");
+            if (isVague) {
+              return {
+                reader_id: r,
+                guess: {
+                  category: "Generic corporate consultancy or vague lifestyle app",
+                  audience: "General public / unspecified",
+                  feel_words: ["bland", "unclear", "generic", "confusing"],
+                  one_line: "An unclear product that offers broad, undefined services.",
+                },
+              };
+            }
             return {
               reader_id: r,
               guess: {
-                category: "Generic corporate consultancy or vague lifestyle app",
-                audience: "General public / unspecified",
-                feel_words: ["bland", "unclear", "generic", "confusing"],
-                one_line: "An unclear product that offers broad, undefined services.",
+                category: "Specialized high-utility software / service",
+                audience: session.brief!.audience.primary,
+                feel_words: ["focused", "distinct", "precise", "disciplined"],
+                one_line: updatedDir.one_line_pitch,
               },
             };
-          }
-          return {
-            reader_id: r,
-            guess: {
-              category: "Specialized high-utility software / service",
-              audience: session.brief!.audience.primary,
-              feel_words: ["focused", "distinct", "precise", "disciplined"],
-              one_line: updatedDir.one_line_pitch,
-            },
-          };
-        },
-      });
-      blindReads.push({ ...readResult, reader_id: r });
-    }
+          },
+        });
+        return { ...readResult, reader_id: r };
+      })
+    );
 
     // Judge evaluations
     const judgePrompt = renderPrompt("judge", {

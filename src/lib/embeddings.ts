@@ -106,7 +106,11 @@ export async function getEmbeddings(texts: string[], stage?: string | number): P
   const startTime = Date.now();
   const endpoint = "https://openrouter.ai/api/v1/embeddings";
 
+  const timeoutMs = 45000;
   for (let attempt = 0; attempt < maxRetries; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
     try {
       const res = await fetch(endpoint, {
         method: "POST",
@@ -114,6 +118,7 @@ export async function getEmbeddings(texts: string[], stage?: string | number): P
           "Content-Type": "application/json",
           Authorization: `Bearer ${apiKey}`,
         },
+        signal: controller.signal,
         body: JSON.stringify({
           model,
           input: texts,
@@ -210,6 +215,14 @@ export async function getEmbeddings(texts: string[], stage?: string | number): P
       return embeddings;
     } catch (err: any) {
       if (err instanceof LLMError) throw err;
+      if (err.name === "AbortError") {
+        throw new LLMError(
+          `OpenRouter Embeddings request timed out after ${timeoutMs}ms`,
+          504,
+          "openrouter",
+          model
+        );
+      }
       if (attempt < maxRetries - 1) {
         const delay = 2000 * Math.pow(2, attempt) + Math.random() * 1000;
         console.warn(
@@ -224,6 +237,8 @@ export async function getEmbeddings(texts: string[], stage?: string | number): P
         "openrouter",
         model
       );
+    } finally {
+      clearTimeout(timeout);
     }
   }
 

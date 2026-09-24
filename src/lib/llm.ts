@@ -139,6 +139,11 @@ function getCacheKey(prompt: string, model: string, temperature: number, maxToke
   return crypto.createHash("sha256").update(content).digest("hex");
 }
 
+function cleanJsonCandidate(str: string): string {
+  // Strip trailing commas before closing brackets or braces
+  return str.replace(/,\s*([\]}])/g, "$1").trim();
+}
+
 // Clean JSON string - handles markdown blocks, preambles, and raw JSON
 export function extractJson(raw: string): any {
   let cleaned = raw.trim();
@@ -146,41 +151,55 @@ export function extractJson(raw: string): any {
     cleaned = cleaned.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
   }
 
+  // 1. Try direct parse
   try {
     return JSON.parse(cleaned);
   } catch {
-    // If model added conversational pre-amble/post-amble, locate first { or [ to matching } or ]
-    const firstBrace = cleaned.indexOf("{");
-    const firstBracket = cleaned.indexOf("[");
+    // 2. Try cleaned candidate (trailing commas removed)
+    try {
+      return JSON.parse(cleanJsonCandidate(cleaned));
+    } catch {
+      // 3. If model added conversational pre-amble/post-amble, locate first { or [ to matching } or ]
+      const firstBrace = cleaned.indexOf("{");
+      const firstBracket = cleaned.indexOf("[");
 
-    let startIndex = -1;
-    let isObject = false;
+      let startIndex = -1;
+      let isObject = false;
 
-    if (firstBrace !== -1 && firstBracket !== -1) {
-      if (firstBrace < firstBracket) {
+      if (firstBrace !== -1 && firstBracket !== -1) {
+        if (firstBrace < firstBracket) {
+          startIndex = firstBrace;
+          isObject = true;
+        } else {
+          startIndex = firstBracket;
+          isObject = false;
+        }
+      } else if (firstBrace !== -1) {
         startIndex = firstBrace;
         isObject = true;
-      } else {
+      } else if (firstBracket !== -1) {
         startIndex = firstBracket;
         isObject = false;
       }
-    } else if (firstBrace !== -1) {
-      startIndex = firstBrace;
-      isObject = true;
-    } else if (firstBracket !== -1) {
-      startIndex = firstBracket;
-      isObject = false;
-    }
 
-    if (startIndex !== -1) {
-      const endIndex = isObject ? cleaned.lastIndexOf("}") : cleaned.lastIndexOf("]");
-      if (endIndex > startIndex) {
-        const candidate = cleaned.substring(startIndex, endIndex + 1);
-        return JSON.parse(candidate);
+      if (startIndex !== -1) {
+        const endIndex = isObject ? cleaned.lastIndexOf("}") : cleaned.lastIndexOf("]");
+        if (endIndex > startIndex) {
+          const candidate = cleaned.substring(startIndex, endIndex + 1);
+          try {
+            return JSON.parse(candidate);
+          } catch {
+            try {
+              return JSON.parse(cleanJsonCandidate(candidate));
+            } catch {
+              // fall through to error
+            }
+          }
+        }
       }
-    }
 
-    throw new Error(`Failed to extract valid JSON from model response: "${raw.substring(0, 200)}..."`);
+      throw new Error(`Failed to extract valid JSON from model response: "${raw.substring(0, 200)}..."`);
+    }
   }
 }
 
@@ -335,7 +354,15 @@ export async function callLLM<T>(options: CallLLMOptions<T>): Promise<T> {
         return text;
       } catch (fetchErr: any) {
         if (fetchErr instanceof LLMError) throw fetchErr;
-        if (attempt < maxTries - 1 && fetchErr.name !== "AbortError") {
+        if (fetchErr.name === "AbortError") {
+          throw new LLMError(
+            `OpenRouter request timed out after ${timeoutMs}ms`,
+            504,
+            "openrouter",
+            targetModel
+          );
+        }
+        if (attempt < maxTries - 1) {
           const delay = 2000 * Math.pow(2, attempt) + Math.random() * 1000;
           console.warn(
             `[LLM] Fetch error on OpenRouter model ${targetModel}: ${fetchErr.message}. Retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${maxTries - 1})...`
@@ -460,7 +487,15 @@ export async function callLLM<T>(options: CallLLMOptions<T>): Promise<T> {
         return text;
       } catch (fetchErr: any) {
         if (fetchErr instanceof LLMError) throw fetchErr;
-        if (attempt < maxTries - 1 && fetchErr.name !== "AbortError") {
+        if (fetchErr.name === "AbortError") {
+          throw new LLMError(
+            `Gemini request timed out after ${timeoutMs}ms`,
+            504,
+            "gemini",
+            targetModel
+          );
+        }
+        if (attempt < maxTries - 1) {
           const delay = 2000 * Math.pow(2, attempt) + Math.random() * 1000;
           console.warn(
             `[LLM] Network/fetch error on model ${targetModel}: ${fetchErr.message}. Retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${maxTries - 1})...`
