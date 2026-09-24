@@ -1,0 +1,1036 @@
+{
+  "id": "test-session-seed-1-1790241625801",
+  "created_at": "2026-09-24T09:20:25.801Z",
+  "updated_at": "2026-09-24T09:20:25.814Z",
+  "stage": 1,
+  "history": [
+    {
+      "stage": 1,
+      "agent": "Session Initializer",
+      "input_summary": "New session started",
+      "output_summary": "Ready for strategic interview",
+      "timestamp": "2026-09-24T09:20:25.803Z"
+    }
+  ],
+  "brief": {
+    "idea": "A terminal-first, local-only encrypted personal knowledge base and second brain built for paranoid security engineers and low-level programmers.",
+    "audience": {
+      "primary": "Kernel engineers, cryptographers, and infosec researchers",
+      "secondary": "Self-hosters and terminal purists",
+      "context": "Work in air-gapped or hardened Linux/BSD workstations, reject cloud telemetry, hate Electron memory bloat."
+    },
+    "problem": "Modern note-taking tools are bloated, cloud-dependent Electron apps that leak metadata and demand mouse clicks.",
+    "value": "Sub-millisecond keyboard navigation, raw plaintext markdown, zero-knowledge AES-256-GCM encryption on disk, zero cloud dependencies.",
+    "constraints": [
+      "No cloud accounts or remote servers allowed",
+      "Must execute directly in TTY/terminal without GUI",
+      "No corporate SaaS jargon or friendly onboarding wizards"
+    ],
+    "open_questions": [
+      "Should multi-device sync be handled via git-crypt or raw P2P Tor onions?"
+    ],
+    "qa": [
+      {
+        "q": "Who is the uncompromising user who would install this on day one?",
+        "a": "Paranoid security researchers and C/Rust programmers who write code in Neovim/tmux and refuse to store notes on Notion or Obsidian sync."
+      },
+      {
+        "q": "What is the single failure mode this product must avoid at all costs?",
+        "a": "Accidental outbound network calls or telemetry. It must function perfectly with network cables unplugged."
+      },
+      {
+        "q": "How does the pricing or distribution work?",
+        "a": "Open core CLI with paid encrypted offline peer-to-peer sync license."
+      }
+    ]
+  },
+  "generic_map": {
+    "n_samples": 30,
+    "samples": [
+      {
+        "name": "BrainVault",
+        "tagline": "The future of secure notes",
+        "tone_words": [
+          "smart",
+          "seamless",
+          "innovative"
+        ],
+        "color_mood": "tech blue and clean white"
+      },
+      {
+        "name": "NoteFlow.ai",
+        "tagline": "Supercharge your second brain",
+        "tone_words": [
+          "effortless",
+          "modern",
+          "empowering"
+        ],
+        "color_mood": "neon purple gradient"
+      },
+      {
+        "name": "MindSync",
+        "tagline": "Reimagining personal knowledge",
+        "tone_words": [
+          "collaborative",
+          "intuitive",
+          "connected"
+        ],
+        "color_mood": "teal and slate"
+      },
+      {
+        "name": "CryptaNote",
+        "tagline": "Security made simple for everyone",
+        "tone_words": [
+          "trusted",
+          "scalable",
+          "friendly"
+        ],
+        "color_mood": "corporate navy"
+      },
+      {
+        "name": "SynapseHub",
+        "tagline": "All-in-one knowledge management",
+        "tone_words": [
+          "robust",
+          "intelligent",
+          "holistic"
+        ],
+        "color_mood": "cyan and dark gray"
+      },
+      {
+        "name": "ZenTerm",
+        "tagline": "Frictionless notes for developers",
+        "tone_words": [
+          "zen",
+          "clean",
+          "minimal"
+        ],
+        "color_mood": "monochrome gray"
+      },
+      {
+        "name": "CipherNest",
+        "tagline": "Your encrypted cloud haven",
+        "tone_words": [
+          "secure",
+          "elevate",
+          "cutting-edge"
+        ],
+        "color_mood": "electric indigo"
+      },
+      {
+        "name": "OmniMind",
+        "tagline": "Next generation thought capture",
+        "tone_words": [
+          "revolutionary",
+          "dynamic",
+          "smart"
+        ],
+        "color_mood": "gradient violet"
+      },
+      {
+        "name": "ShieldNotes",
+        "tagline": "Empowering developers to think safer",
+        "tone_words": [
+          "protective",
+          "streamlined",
+          "trusted"
+        ],
+        "color_mood": "blue and green"
+      },
+      {
+        "name": "CodeBrain",
+        "tagline": "The smarter way to code notes",
+        "tone_words": [
+          "innovative",
+          "seamless",
+          "bespoke"
+        ],
+        "color_mood": "dark mode neon"
+      }
+    ],
+    "embedding_points": [
+      {
+        "id": 1,
+        "x": 12.4,
+        "y": 15.2,
+        "cluster": 0,
+        "name": "BrainVault",
+        "tagline": "The future of secure notes"
+      },
+      {
+        "id": 2,
+        "x": 14.1,
+        "y": 18,
+        "cluster": 0,
+        "name": "NoteFlow.ai",
+        "tagline": "Supercharge your second brain"
+      },
+      {
+        "id": 3,
+        "x": 10.8,
+        "y": 16.3,
+        "cluster": 0,
+        "name": "MindSync",
+        "tagline": "Reimagining personal knowledge"
+      },
+      {
+        "id": 4,
+        "x": 13.5,
+        "y": 14.7,
+        "cluster": 0,
+        "name": "CryptaNote",
+        "tagline": "Security made simple"
+      },
+      {
+        "id": 5,
+        "x": 15.2,
+        "y": 17.5,
+        "cluster": 0,
+        "name": "SynapseHub",
+        "tagline": "All-in-one knowledge management"
+      },
+      {
+        "id": 6,
+        "x": 11.2,
+        "y": 13.9,
+        "cluster": 0,
+        "name": "ZenTerm",
+        "tagline": "Frictionless notes"
+      },
+      {
+        "id": 7,
+        "x": 16,
+        "y": 19.1,
+        "cluster": 0,
+        "name": "CipherNest",
+        "tagline": "Your encrypted cloud haven"
+      },
+      {
+        "id": 8,
+        "x": 14.8,
+        "y": 16.9,
+        "cluster": 0,
+        "name": "OmniMind",
+        "tagline": "Next generation thought capture"
+      },
+      {
+        "id": 9,
+        "x": 12.9,
+        "y": 15.8,
+        "cluster": 0,
+        "name": "ShieldNotes",
+        "tagline": "Empowering developers"
+      },
+      {
+        "id": 10,
+        "x": 13.8,
+        "y": 17.1,
+        "cluster": 0,
+        "name": "CodeBrain",
+        "tagline": "The smarter way to code notes"
+      },
+      {
+        "id": 11,
+        "x": 11.9,
+        "y": 16.5,
+        "cluster": 0
+      },
+      {
+        "id": 12,
+        "x": 13,
+        "y": 14.2,
+        "cluster": 0
+      },
+      {
+        "id": 13,
+        "x": 15.5,
+        "y": 18.3,
+        "cluster": 0
+      },
+      {
+        "id": 14,
+        "x": 10.2,
+        "y": 15,
+        "cluster": 0
+      },
+      {
+        "id": 15,
+        "x": 14,
+        "y": 16,
+        "cluster": 0
+      },
+      {
+        "id": 16,
+        "x": 12.7,
+        "y": 17.8,
+        "cluster": 0
+      },
+      {
+        "id": 17,
+        "x": 13.3,
+        "y": 15.5,
+        "cluster": 0
+      },
+      {
+        "id": 18,
+        "x": 11.5,
+        "y": 16.1,
+        "cluster": 0
+      },
+      {
+        "id": 19,
+        "x": 14.5,
+        "y": 17.9,
+        "cluster": 0
+      },
+      {
+        "id": 20,
+        "x": 13.9,
+        "y": 16.7,
+        "cluster": 0
+      },
+      {
+        "id": 21,
+        "x": 12.1,
+        "y": 14.9,
+        "cluster": 0
+      },
+      {
+        "id": 22,
+        "x": 15.1,
+        "y": 17,
+        "cluster": 0
+      },
+      {
+        "id": 23,
+        "x": 10.9,
+        "y": 15.7,
+        "cluster": 0
+      },
+      {
+        "id": 24,
+        "x": 14.2,
+        "y": 18.5,
+        "cluster": 0
+      },
+      {
+        "id": 25,
+        "x": 13.1,
+        "y": 16.2,
+        "cluster": 0
+      },
+      {
+        "id": 26,
+        "x": 12.5,
+        "y": 15.1,
+        "cluster": 0
+      },
+      {
+        "id": 27,
+        "x": 14.7,
+        "y": 17.3,
+        "cluster": 0
+      },
+      {
+        "id": 28,
+        "x": 11.8,
+        "y": 14.5,
+        "cluster": 0
+      },
+      {
+        "id": 29,
+        "x": 13.6,
+        "y": 16.4,
+        "cluster": 0
+      },
+      {
+        "id": 30,
+        "x": 12,
+        "y": 15.9,
+        "cluster": 0
+      },
+      {
+        "id": 101,
+        "x": -28.5,
+        "y": -22.4,
+        "cluster": 1,
+        "name": "KILN",
+        "is_candidate": true,
+        "candidate_id": "dir-1"
+      },
+      {
+        "id": 102,
+        "x": -18.2,
+        "y": 34.1,
+        "cluster": 2,
+        "name": "BLACKTAPE",
+        "is_candidate": true,
+        "candidate_id": "dir-2"
+      },
+      {
+        "id": 103,
+        "x": 38.6,
+        "y": -26,
+        "cluster": 3,
+        "name": "MNEMONIC-0",
+        "is_candidate": true,
+        "candidate_id": "dir-3"
+      }
+    ],
+    "centroid": [
+      13.2,
+      16.3
+    ],
+    "common_names": [
+      "Vault",
+      "Sync",
+      "Mind",
+      "Flow",
+      "Brain",
+      "Cipher",
+      "Term",
+      "Nest"
+    ],
+    "common_taglines_patterns": [
+      "The future of secure notes",
+      "Supercharge your second brain",
+      "Security made simple",
+      "All-in-one knowledge management",
+      "Empowering developers to think safer"
+    ],
+    "common_tone_words": [
+      "seamless",
+      "smart",
+      "innovative",
+      "empowering",
+      "modern",
+      "intuitive",
+      "effortless"
+    ],
+    "common_color_moods": [
+      "tech blue and clean white",
+      "neon purple gradient",
+      "teal and slate",
+      "corporate navy"
+    ]
+  },
+  "directions": [
+    {
+      "id": "dir-1",
+      "label": "Archaic Industrial Brutalism",
+      "positioning": "A cold-forged, zero-telemetry crypt for thought. Built like a submarine bulkhead.",
+      "value_proposition": "Air-gapped markdown vault that treats memory as an operational secret.",
+      "personality": {
+        "traits": [
+          {
+            "trait": "Monastic",
+            "why": "No social feeds, no sharing links, strictly solipsistic focus."
+          },
+          {
+            "trait": "Refractory",
+            "why": "Resists feature creep and commercial telemetry by architectural design."
+          },
+          {
+            "trait": "Surgical",
+            "why": "Single keystroke index lookups without latency or animation frames."
+          }
+        ],
+        "avoid": [
+          "Playful onboarding",
+          "Gamified streaks",
+          "Cloud sync nudges",
+          "Gradient buttons"
+        ]
+      },
+      "name": "KILN",
+      "name_rationale": "From metallurgical kilns: heat-treating raw thought into hardened, unalterable obsidian.",
+      "alt_names": [
+        "SLAG",
+        "COLDMIND",
+        "ANVIL-9"
+      ],
+      "tagline": "Fireproof thought. Zero network sockets.",
+      "one_line_pitch": "A terminal-native, memory-hardened knowledge crypt that never dials home.",
+      "voice": {
+        "rules": [
+          "Use terse declarative sentences; omit all conversational adjectives.",
+          "Reference hardware physics, cryptography, and storage primitives over abstractions.",
+          "Never promise ease or delight; promise inviolable integrity."
+        ],
+        "sample_messages": [
+          "Vault encrypted with ChaCha20-Poly1305. 0 bytes transmitted. Terminal ready.",
+          "Index rebuilt in 1.4ms. Network interface unmapped."
+        ]
+      },
+      "visual": {
+        "palette": [
+          {
+            "name": "Anvil Charcoal",
+            "hex": "#121314",
+            "role": "Primary Canvas"
+          },
+          {
+            "name": "Phosphor Amber",
+            "hex": "#FFB000",
+            "role": "Critical Signal"
+          },
+          {
+            "name": "Cold Steel",
+            "hex": "#4A4D52",
+            "role": "Border & Structure"
+          },
+          {
+            "name": "Bleached Bone",
+            "hex": "#EDEDE8",
+            "role": "High-Readability Text"
+          }
+        ],
+        "typography": {
+          "heading": "Space Grotesk",
+          "body": "JetBrains Mono",
+          "rationale": "Engineered monospace with stark geometric title presence."
+        },
+        "shape_language": "Rigid 1px borders, 0px border-radius, dense ASCII tabular hierarchy.",
+        "image_style": "Monochrome macro photography of cold rolled steel and circuit dies.",
+        "avoid": [
+          "Curved pills",
+          "SaaS gradients",
+          "Blob shapes",
+          "Pastel accent colors"
+        ]
+      },
+      "revisions": [
+        {
+          "field": "tagline",
+          "before": "The smarter way to keep your developer notes private",
+          "after": "Fireproof thought. Zero network sockets.",
+          "reason": "Replaced cliché 'smarter way to' pattern with uncompromising technical posture."
+        },
+        {
+          "field": "name",
+          "before": "VaultTerm",
+          "after": "KILN",
+          "reason": "Eliminated generic SaaS stems '-term' and 'vault' in favor of raw industrial metaphor."
+        }
+      ]
+    },
+    {
+      "id": "dir-2",
+      "label": "Tactical Counter-Surveillance",
+      "positioning": "Operational intelligence notebook for adversarial environments.",
+      "value_proposition": "Denial-first documentation: plausible deniability vaults with decoy keystrokes.",
+      "personality": {
+        "traits": [
+          {
+            "trait": "Paranoid",
+            "why": "Assumes the host operating system is compromised."
+          },
+          {
+            "trait": "Spartan",
+            "why": "Every byte of RAM allocated is verified and wiped on exit."
+          },
+          {
+            "trait": "Subversive",
+            "why": "Rejects surveillance capitalism's capture of personal intellectual property."
+          }
+        ],
+        "avoid": [
+          "Cheery illustrations",
+          "Collaborative team invites",
+          "Weekly digest newsletters"
+        ]
+      },
+      "name": "BLACKTAPE",
+      "name_rationale": "Physical analogy of black electrical tape covering webcams and sensor arrays.",
+      "alt_names": [
+        "FARADAY",
+        "SHADOWKEY",
+        "DEADBOX"
+      ],
+      "tagline": "Your mind is classified. Act like it.",
+      "one_line_pitch": "Plausible deniability markdown engine for researchers in hostile networks.",
+      "voice": {
+        "rules": [
+          "Frame data privacy as self-defense rather than a software preference.",
+          "Use operational field terminology rather than product management speak.",
+          "Refuse to congratulate the user for standard hygiene."
+        ],
+        "sample_messages": [
+          "Session terminated. RAM scrubbed with random entropy. No residual state.",
+          "Decoy partition mounted at /dev/null."
+        ]
+      },
+      "visual": {
+        "palette": [
+          {
+            "name": "Void Black",
+            "hex": "#080808",
+            "role": "Dominant Shield"
+          },
+          {
+            "name": "Tactical Red",
+            "hex": "#E63946",
+            "role": "Alert Accent"
+          },
+          {
+            "name": "Infrared Gray",
+            "hex": "#2B2D42",
+            "role": "Secondary Container"
+          },
+          {
+            "name": "CRT Green",
+            "hex": "#00FF66",
+            "role": "Signal State"
+          }
+        ],
+        "typography": {
+          "heading": "Syne",
+          "body": "IBM Plex Mono",
+          "rationale": "Unapologetic angular typography paired with intelligence-dossier monospacing."
+        },
+        "shape_language": "Warning stripes, dossier watermarks, bracketed coordinate labels.",
+        "image_style": "Stark thermal imagery, redacted document scans, and phosphor trace lines.",
+        "avoid": [
+          "Smiley avatars",
+          "Rounded cards",
+          "Friendly tooltips"
+        ]
+      },
+      "revisions": [
+        {
+          "field": "positioning",
+          "before": "A secure second brain for smart people who care about security",
+          "after": "Operational intelligence notebook for adversarial environments.",
+          "reason": "Removed lazy 'second brain' trope and replaced with specific operational mandate."
+        }
+      ]
+    },
+    {
+      "id": "dir-3",
+      "label": "Stoic Archival Monasticism",
+      "positioning": "Enduring offline knowledge ledger designed to survive decades without upkeep.",
+      "value_proposition": "Zero-dependency plain text ledger compiled to static self-contained binary.",
+      "personality": {
+        "traits": [
+          {
+            "trait": "Epochal",
+            "why": "Built to open identically in 2075 without backward incompatibility."
+          },
+          {
+            "trait": "Austere",
+            "why": "Rejects the dopamine cycle of hyperlinked notification noise."
+          },
+          {
+            "trait": "Disciplined",
+            "why": "Enforces clear atomic thinking over chaotic web clipping."
+          }
+        ],
+        "avoid": [
+          "AI chat autocomplete",
+          "Plugin marketplaces",
+          "Web clippers",
+          "Sync spinners"
+        ]
+      },
+      "name": "MNEMONIC-0",
+      "name_rationale": "Mnemonic device stripped to zero baseline; foundational human recall.",
+      "alt_names": [
+        "SCRIPTORIUM",
+        "CODEX-OFFLINE",
+        "PERPETUA"
+      ],
+      "tagline": "Notes for the next fifty years.",
+      "one_line_pitch": "Archival terminal notebook with guaranteed zero dependencies and offline longevity.",
+      "voice": {
+        "rules": [
+          "Speak with historical gravity and long-term permanence.",
+          "Treat file formats as treaties: Plain UTF-8, zero proprietary encodings.",
+          "Focus on cognitive endurance over speed."
+        ],
+        "sample_messages": [
+          "Record appended to ledger. Checksum verified against local root.",
+          "No network socket detected. As designed."
+        ]
+      },
+      "visual": {
+        "palette": [
+          {
+            "name": "Ink Black",
+            "hex": "#16161D",
+            "role": "Type & Structure"
+          },
+          {
+            "name": "Aged Vellum",
+            "hex": "#F5F2EB",
+            "role": "Paper Substrate"
+          },
+          {
+            "name": "Oxide Ochre",
+            "hex": "#C68B59",
+            "role": "Historical Accent"
+          },
+          {
+            "name": "Lead Slate",
+            "hex": "#5C6068",
+            "role": "Metadata"
+          }
+        ],
+        "typography": {
+          "heading": "Newsreader",
+          "body": "Space Mono",
+          "rationale": "Sublime archival serif heading combined with typewriter precision."
+        },
+        "shape_language": "Bookbinding margins, subtle hairline rules, editorial grid systems.",
+        "image_style": "High-resolution architectural stone engravings and archival parchment details.",
+        "avoid": [
+          "App launcher icons",
+          "Floating action buttons",
+          "Neon lights"
+        ]
+      },
+      "revisions": [
+        {
+          "field": "tagline",
+          "before": "Next generation archival notes for everyone",
+          "after": "Notes for the next fifty years.",
+          "reason": "Purged 'Next generation' and 'for everyone' clichés."
+        }
+      ]
+    }
+  ],
+  "scores": {
+    "dir-1": {
+      "direction_id": "dir-1",
+      "genericness": 24.2,
+      "genericness_breakdown": {
+        "embedding_sim": 18.5,
+        "cliche_hits": [],
+        "cliche_rate": 0
+      },
+      "perception_gap": 0.18,
+      "gap_breakdown": {
+        "category_match": 0.92,
+        "audience_match": 0.88,
+        "feel_match": 0.9
+      },
+      "pass": true
+    },
+    "dir-2": {
+      "direction_id": "dir-2",
+      "genericness": 29.8,
+      "genericness_breakdown": {
+        "embedding_sim": 24.1,
+        "cliche_hits": [],
+        "cliche_rate": 0
+      },
+      "perception_gap": 0.22,
+      "gap_breakdown": {
+        "category_match": 0.84,
+        "audience_match": 0.82,
+        "feel_match": 0.86
+      },
+      "pass": true
+    },
+    "dir-3": {
+      "direction_id": "dir-3",
+      "genericness": 31.4,
+      "genericness_breakdown": {
+        "embedding_sim": 26.5,
+        "cliche_hits": [],
+        "cliche_rate": 0
+      },
+      "perception_gap": 0.25,
+      "gap_breakdown": {
+        "category_match": 0.81,
+        "audience_match": 0.8,
+        "feel_match": 0.85
+      },
+      "pass": true
+    }
+  },
+  "spec": {
+    "banned_words": [
+      "seamless",
+      "supercharge",
+      "empowering",
+      "modern",
+      "effortless",
+      "all-in-one",
+      "intuitive",
+      "smart",
+      "future of",
+      "second brain",
+      "elevate",
+      "frictionless",
+      "delightful"
+    ],
+    "required_traits": [
+      "Cold technical precision",
+      "Hardware-level honesty (reference RAM, disk, cryptographic primitives)",
+      "Solipsistic posture (reject social features and sharing tropes)"
+    ],
+    "voice_rules": [
+      "State facts in declarative sentences; omit marketing hyperbole.",
+      "Never use exclamation marks or friendly exclamation phrases.",
+      "Address the user as an autonomous operator, never a consumer to be pampered.",
+      "Explicitly declare offline guarantees whenever describing system behavior."
+    ],
+    "palette": [
+      {
+        "hex": "#121314"
+      },
+      {
+        "hex": "#FFB000"
+      },
+      {
+        "hex": "#4A4D52"
+      },
+      {
+        "hex": "#EDEDE8"
+      }
+    ],
+    "contrast_min": 4.5,
+    "rounds": [
+      {
+        "round": 1,
+        "attack": "Meet KILN: The smart, intuitive notes app designed to seamlessly organize your thoughts.",
+        "slipped_through": true,
+        "new_rule": "Ban 'meet [product]', 'intuitive', and 'smart'. State capability directly without welcoming gestures."
+      },
+      {
+        "round": 2,
+        "attack": "Supercharge your developer productivity with our lightning-fast knowledge architecture.",
+        "slipped_through": true,
+        "new_rule": "Ban 'supercharge' and 'productivity'. Emphasize tamper-proof integrity and zero network socket architecture."
+      },
+      {
+        "round": 3,
+        "attack": "Enjoy peace of mind knowing your thoughts are safely protected by our friendly security model.",
+        "slipped_through": false,
+        "new_rule": "Enforce zero-patronizing tone: never tell the user how to feel ('enjoy', 'delight', 'peace of mind')."
+      }
+    ]
+  },
+  "brand_kit": {
+    "summary": {
+      "idea": "A terminal-first, local-only encrypted personal knowledge base and second brain built for paranoid security engineers and low-level programmers.",
+      "audience": {
+        "primary": "Kernel engineers, cryptographers, and infosec researchers",
+        "secondary": "Self-hosters and terminal purists",
+        "context": "Work in air-gapped or hardened Linux/BSD workstations, reject cloud telemetry, hate Electron memory bloat."
+      },
+      "problem": "Modern note-taking tools are bloated, cloud-dependent Electron apps that leak metadata and demand mouse clicks.",
+      "value": "Sub-millisecond keyboard navigation, raw plaintext markdown, zero-knowledge AES-256-GCM encryption on disk, zero cloud dependencies.",
+      "constraints": [
+        "No cloud accounts or remote servers allowed",
+        "Must execute directly in TTY/terminal without GUI",
+        "No corporate SaaS jargon or friendly onboarding wizards"
+      ],
+      "open_questions": [
+        "Should multi-device sync be handled via git-crypt or raw P2P Tor onions?"
+      ],
+      "qa": [
+        {
+          "q": "Who is the uncompromising user who would install this on day one?",
+          "a": "Paranoid security researchers and C/Rust programmers who write code in Neovim/tmux and refuse to store notes on Notion or Obsidian sync."
+        },
+        {
+          "q": "What is the single failure mode this product must avoid at all costs?",
+          "a": "Accidental outbound network calls or telemetry. It must function perfectly with network cables unplugged."
+        },
+        {
+          "q": "How does the pricing or distribution work?",
+          "a": "Open core CLI with paid encrypted offline peer-to-peer sync license."
+        }
+      ]
+    },
+    "direction": {
+      "id": "dir-1",
+      "label": "Archaic Industrial Brutalism",
+      "positioning": "A cold-forged, zero-telemetry crypt for thought. Built like a submarine bulkhead.",
+      "value_proposition": "Air-gapped markdown vault that treats memory as an operational secret.",
+      "personality": {
+        "traits": [
+          {
+            "trait": "Monastic",
+            "why": "No social feeds, no sharing links, strictly solipsistic focus."
+          },
+          {
+            "trait": "Refractory",
+            "why": "Resists feature creep and commercial telemetry by architectural design."
+          },
+          {
+            "trait": "Surgical",
+            "why": "Single keystroke index lookups without latency or animation frames."
+          }
+        ],
+        "avoid": [
+          "Playful onboarding",
+          "Gamified streaks",
+          "Cloud sync nudges",
+          "Gradient buttons"
+        ]
+      },
+      "name": "KILN",
+      "name_rationale": "From metallurgical kilns: heat-treating raw thought into hardened, unalterable obsidian.",
+      "alt_names": [
+        "SLAG",
+        "COLDMIND",
+        "ANVIL-9"
+      ],
+      "tagline": "Fireproof thought. Zero network sockets.",
+      "one_line_pitch": "A terminal-native, memory-hardened knowledge crypt that never dials home.",
+      "voice": {
+        "rules": [
+          "Use terse declarative sentences; omit all conversational adjectives.",
+          "Reference hardware physics, cryptography, and storage primitives over abstractions.",
+          "Never promise ease or delight; promise inviolable integrity."
+        ],
+        "sample_messages": [
+          "Vault encrypted with ChaCha20-Poly1305. 0 bytes transmitted. Terminal ready.",
+          "Index rebuilt in 1.4ms. Network interface unmapped."
+        ]
+      },
+      "visual": {
+        "palette": [
+          {
+            "name": "Anvil Charcoal",
+            "hex": "#121314",
+            "role": "Primary Canvas"
+          },
+          {
+            "name": "Phosphor Amber",
+            "hex": "#FFB000",
+            "role": "Critical Signal"
+          },
+          {
+            "name": "Cold Steel",
+            "hex": "#4A4D52",
+            "role": "Border & Structure"
+          },
+          {
+            "name": "Bleached Bone",
+            "hex": "#EDEDE8",
+            "role": "High-Readability Text"
+          }
+        ],
+        "typography": {
+          "heading": "Space Grotesk",
+          "body": "JetBrains Mono",
+          "rationale": "Engineered monospace with stark geometric title presence."
+        },
+        "shape_language": "Rigid 1px borders, 0px border-radius, dense ASCII tabular hierarchy.",
+        "image_style": "Monochrome macro photography of cold rolled steel and circuit dies.",
+        "avoid": [
+          "Curved pills",
+          "SaaS gradients",
+          "Blob shapes",
+          "Pastel accent colors"
+        ]
+      },
+      "revisions": [
+        {
+          "field": "tagline",
+          "before": "The smarter way to keep your developer notes private",
+          "after": "Fireproof thought. Zero network sockets.",
+          "reason": "Replaced cliché 'smarter way to' pattern with uncompromising technical posture."
+        },
+        {
+          "field": "name",
+          "before": "VaultTerm",
+          "after": "KILN",
+          "reason": "Eliminated generic SaaS stems '-term' and 'vault' in favor of raw industrial metaphor."
+        }
+      ]
+    },
+    "scores": {
+      "direction_id": "dir-1",
+      "genericness": 24.2,
+      "genericness_breakdown": {
+        "embedding_sim": 18.5,
+        "cliche_hits": [],
+        "cliche_rate": 0
+      },
+      "perception_gap": 0.18,
+      "gap_breakdown": {
+        "category_match": 0.92,
+        "audience_match": 0.88,
+        "feel_match": 0.9
+      },
+      "pass": true
+    },
+    "spec": {
+      "banned_words": [
+        "seamless",
+        "supercharge",
+        "empowering",
+        "modern",
+        "effortless",
+        "all-in-one",
+        "intuitive",
+        "smart",
+        "future of",
+        "second brain",
+        "elevate",
+        "frictionless",
+        "delightful"
+      ],
+      "required_traits": [
+        "Cold technical precision",
+        "Hardware-level honesty (reference RAM, disk, cryptographic primitives)",
+        "Solipsistic posture (reject social features and sharing tropes)"
+      ],
+      "voice_rules": [
+        "State facts in declarative sentences; omit marketing hyperbole.",
+        "Never use exclamation marks or friendly exclamation phrases.",
+        "Address the user as an autonomous operator, never a consumer to be pampered.",
+        "Explicitly declare offline guarantees whenever describing system behavior."
+      ],
+      "palette": [
+        {
+          "hex": "#121314"
+        },
+        {
+          "hex": "#FFB000"
+        },
+        {
+          "hex": "#4A4D52"
+        },
+        {
+          "hex": "#EDEDE8"
+        }
+      ],
+      "contrast_min": 4.5,
+      "rounds": [
+        {
+          "round": 1,
+          "attack": "Meet KILN: The smart, intuitive notes app designed to seamlessly organize your thoughts.",
+          "slipped_through": true,
+          "new_rule": "Ban 'meet [product]', 'intuitive', and 'smart'. State capability directly without welcoming gestures."
+        },
+        {
+          "round": 2,
+          "attack": "Supercharge your developer productivity with our lightning-fast knowledge architecture.",
+          "slipped_through": true,
+          "new_rule": "Ban 'supercharge' and 'productivity'. Emphasize tamper-proof integrity and zero network socket architecture."
+        },
+        {
+          "round": 3,
+          "attack": "Enjoy peace of mind knowing your thoughts are safely protected by our friendly security model.",
+          "slipped_through": false,
+          "new_rule": "Enforce zero-patronizing tone: never tell the user how to feel ('enjoy', 'delight', 'peace of mind')."
+        }
+      ]
+    },
+    "launch": {
+      "landing_headline": "FIREPROOF THOUGHT. ZERO NETWORK SOCKETS.",
+      "subhead": "An unadorned terminal knowledge crypt compiled directly to native binary. Plaintext markdown encrypted on disk with ChaCha20-Poly1305. No cloud accounts. No telemetry. No Electron memory leaks.",
+      "one_line_pitch": "A memory-hardened terminal note vault for operators who treat thought as classified intelligence.",
+      "social_posts": [
+        "Every major note-taking application is an Electron wrapper designed to monetize your intellectual property or leak metadata to third-party CDNs. KILN has zero network dependencies. Pull the Ethernet cable and inspect the memory dump.",
+        "KILN v1.0. 1.2MB binary. Sub-millisecond fuzzy search. ChaCha20-Poly1305 local encryption. Terminal only. Build from source or inspect the signatures.",
+        "If your notes require an internet connection to open, they are not your notes. KILN runs in your TTY. Always."
+      ]
+    }
+  }
+}

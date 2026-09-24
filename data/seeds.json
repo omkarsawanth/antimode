@@ -1,0 +1,23 @@
+[
+  {
+    "id": "seed-1",
+    "title": "Terminal Knowledge Base",
+    "idea": "A terminal-first, local-only encrypted personal knowledge base and second brain built for paranoid security engineers and low-level programmers.",
+    "expected_category": "Developer Tools & Privacy Software",
+    "target_audience": "Systems programmers, cryptographers, and infosec researchers who hate Electron apps and cloud sync."
+  },
+  {
+    "id": "seed-2",
+    "title": "Forest Adaptogen Tonic",
+    "idea": "An ultra-minimalist, zero-caffeine bitter herbal focus tonic brewed in cold small batches from wild Nordic forest bark, roots, and pine.",
+    "expected_category": "Functional Beverages & Wellness",
+    "target_audience": "Deep work knowledge workers, endurance athletes, and architects seeking sustained focus without stimulant crashes."
+  },
+  {
+    "id": "seed-3",
+    "title": "Parametric Rain Insurance",
+    "idea": "An unbundled peer-risk parametric rain micro-insurance platform that pays gig delivery couriers instantly via mobile money the second precipitation exceeds 3mm/hr in their geofenced sector.",
+    "expected_category": "Fintech & Gig Worker Safety Net",
+    "target_audience": "Urban e-bike and motorcycle couriers in wet metro areas who lose wages during flash downpours."
+  }
+]

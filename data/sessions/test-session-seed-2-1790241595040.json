@@ -1,0 +1,774 @@
+{
+  "id": "test-session-seed-2-1790241595040",
+  "created_at": "2026-09-24T09:19:55.040Z",
+  "updated_at": "2026-09-24T09:19:55.041Z",
+  "stage": 1,
+  "history": [
+    {
+      "stage": 1,
+      "agent": "Session Initializer",
+      "input_summary": "New session started",
+      "output_summary": "Ready for strategic interview",
+      "timestamp": "2026-09-24T09:19:55.040Z"
+    }
+  ],
+  "brief": {
+    "idea": "An ultra-minimalist, zero-caffeine bitter herbal focus tonic brewed in cold small batches from wild Nordic forest bark, roots, and pine needles.",
+    "audience": {
+      "primary": "Deep-work knowledge workers, engineers, and architects",
+      "secondary": "Endurance athletes seeking clean physical grounding",
+      "context": "Suffer from chronic caffeine crashes, jittery afternoon anxiety, and over-sweetened artificial energy drinks."
+    },
+    "problem": "Energy drinks rely on 200mg caffeine spikes, sucralose, and fake neon flavors that wreck sleep architecture and neuro-receptors.",
+    "value": "Subtle, non-dopaminergic cognitive endurance derived from wild-foraged adaptogens, bitter triterpenes, and cold-extracted birch chaga.",
+    "constraints": [
+      "Zero added sweeteners, zero artificial flavorings",
+      "Must not look like a tech startup drink or a cartoon wellness seltzer",
+      "No cheerful pastel cans or faux-spiritual branding"
+    ],
+    "open_questions": [
+      "How to prepare first-time drinkers for the intense bitter pine resin flavor profile?"
+    ],
+    "qa": [
+      {
+        "q": "What is the single emotion a customer should feel taking their first sip?",
+        "a": "Shocked by the authentic bitter bark, followed by an immediate sense of quiet, rooted mental stillness."
+      },
+      {
+        "q": "How should the vessel be packaged?",
+        "a": "Heavy amber glass apothecary bottle with wax-sealed cap and letterpress botanical label."
+      },
+      {
+        "q": "What makes this impossible for mainstream beverage conglomerates to copy?",
+        "a": "Wild hand-foraged Arctic botanicals with seasonal vintage variances that cannot be synthesized in chemical vats."
+      }
+    ]
+  },
+  "generic_map": {
+    "n_samples": 30,
+    "samples": [
+      {
+        "name": "ZenSip",
+        "tagline": "Mindful energy for modern life",
+        "tone_words": [
+          "calm",
+          "pure",
+          "elevating"
+        ],
+        "color_mood": "soft sage green and cream"
+      },
+      {
+        "name": "PureAdapt",
+        "tagline": "Unleash your inner vitality",
+        "tone_words": [
+          "holistic",
+          "empowering",
+          "natural"
+        ],
+        "color_mood": "earthy brown and green"
+      },
+      {
+        "name": "AuraTonic",
+        "tagline": "The future of botanical wellness",
+        "tone_words": [
+          "radiant",
+          "revitalizing",
+          "clean"
+        ],
+        "color_mood": "pastel watercolor gradient"
+      },
+      {
+        "name": "ForestFlow",
+        "tagline": "Nature's smart energy boost",
+        "tone_words": [
+          "refreshing",
+          "seamless",
+          "balanced"
+        ],
+        "color_mood": "forest green and white"
+      },
+      {
+        "name": "VitalRoot",
+        "tagline": "Supercharge your daily focus",
+        "tone_words": [
+          "vibrant",
+          "organic",
+          "potent"
+        ],
+        "color_mood": "warm amber and leaf green"
+      }
+    ],
+    "embedding_points": [
+      {
+        "id": 1,
+        "x": 22.1,
+        "y": -14.3,
+        "cluster": 0,
+        "name": "ZenSip",
+        "tagline": "Mindful energy for modern life"
+      },
+      {
+        "id": 2,
+        "x": 24.5,
+        "y": -16,
+        "cluster": 0,
+        "name": "PureAdapt",
+        "tagline": "Unleash your inner vitality"
+      },
+      {
+        "id": 3,
+        "x": 21,
+        "y": -12.8,
+        "cluster": 0,
+        "name": "AuraTonic",
+        "tagline": "The future of botanical wellness"
+      },
+      {
+        "id": 4,
+        "x": 25.2,
+        "y": -15.1,
+        "cluster": 0,
+        "name": "ForestFlow",
+        "tagline": "Nature's smart energy boost"
+      },
+      {
+        "id": 5,
+        "x": 23.8,
+        "y": -13.9,
+        "cluster": 0,
+        "name": "VitalRoot",
+        "tagline": "Supercharge your daily focus"
+      },
+      {
+        "id": 101,
+        "x": -35.2,
+        "y": 28.4,
+        "cluster": 1,
+        "name": "BARK & TALLOW",
+        "is_candidate": true,
+        "candidate_id": "dir-1"
+      },
+      {
+        "id": 102,
+        "x": -14.6,
+        "y": -38.2,
+        "cluster": 2,
+        "name": "KJELL",
+        "is_candidate": true,
+        "candidate_id": "dir-2"
+      },
+      {
+        "id": 103,
+        "x": 42.1,
+        "y": 31,
+        "cluster": 3,
+        "name": "ARCTIC HUMUS",
+        "is_candidate": true,
+        "candidate_id": "dir-3"
+      }
+    ],
+    "centroid": [
+      23.3,
+      -14.4
+    ],
+    "common_names": [
+      "Zen",
+      "Root",
+      "Adapt",
+      "Pure",
+      "Aura",
+      "Flow",
+      "Vital",
+      "Nature",
+      "Botanica"
+    ],
+    "common_taglines_patterns": [
+      "Mindful energy for modern life",
+      "Unleash your inner vitality",
+      "The future of botanical wellness",
+      "Nature's smart energy boost",
+      "Supercharge your daily focus"
+    ],
+    "common_tone_words": [
+      "mindful",
+      "clean",
+      "vitality",
+      "holistic",
+      "pure",
+      "elevating",
+      "refreshing"
+    ],
+    "common_color_moods": [
+      "soft sage green and cream",
+      "earthy brown and green",
+      "pastel watercolor gradient"
+    ]
+  },
+  "directions": [
+    {
+      "id": "dir-1",
+      "label": "Nordic Botanical Penance",
+      "positioning": "Uncompromising bitter medicine harvested from sub-zero taiga.",
+      "value_proposition": "Cold-decocted pine resin and chaga root for cognitive endurance without nervous agitation.",
+      "personality": {
+        "traits": [
+          {
+            "trait": "Austere",
+            "why": "No sugar, no pleasantries, pure active phytochemical astringency."
+          },
+          {
+            "trait": "Rooted",
+            "why": "Honors the harsh reality of arctic permafrost flora."
+          },
+          {
+            "trait": "Monastic",
+            "why": "Approaches hydration as a solemn discipline rather than recreation."
+          }
+        ],
+        "avoid": [
+          "Bubblegum wellness",
+          "Playful mascots",
+          "Pastel cans",
+          "Flavored seltzers"
+        ]
+      },
+      "name": "BARK & TALLOW",
+      "name_rationale": "Echoes pre-industrial apothecaries where remedies were visceral and unadorned.",
+      "alt_names": [
+        "PINEVÄRN",
+        "CHAGA-66",
+        "RESIN-LAB"
+      ],
+      "tagline": "Bitter medicine for quiet thought.",
+      "one_line_pitch": "Wild Nordic pine and birch decoction for prolonged cognitive stamina without caffeine.",
+      "voice": {
+        "rules": [
+          "Acknowledge the harsh, astringent taste honestly without apology.",
+          "Use botanical taxonomical terms instead of marketing adjectives.",
+          "Reject all wellness optimism and pseudo-spiritual promises."
+        ],
+        "sample_messages": [
+          "Contains 0g sugar. Heavy in bitter triterpenes. Do not drink if you seek sweetness.",
+          "Harvested at 66°N during autumnal frost. Sediment is intact."
+        ]
+      },
+      "visual": {
+        "palette": [
+          {
+            "name": "Bog Pine",
+            "hex": "#1C241D",
+            "role": "Primary Deep Forest"
+          },
+          {
+            "name": "Birch Bark",
+            "hex": "#EBE5D8",
+            "role": "Label Canvas"
+          },
+          {
+            "name": "Lichen Amber",
+            "hex": "#B87333",
+            "role": "Apothecary Glass"
+          },
+          {
+            "name": "Iron Rust",
+            "hex": "#7B3F00",
+            "role": "Stamp Accent"
+          }
+        ],
+        "typography": {
+          "heading": "Cinzel",
+          "body": "Newsreader",
+          "rationale": "Classical epigraphic roman serif invoking ancient botanical pharmacopoeias."
+        },
+        "shape_language": "Apothecary letterpress stamps, heavy lead rules, anatomical linocut botanicals.",
+        "image_style": "Monochrome macro photography of frosted pine bark and cross-cut roots.",
+        "avoid": [
+          "Cartoon fruit icons",
+          "Neon can wraps",
+          "Playful rounded badges"
+        ]
+      },
+      "revisions": [
+        {
+          "field": "tagline",
+          "before": "Unlock the natural power of the forest",
+          "after": "Bitter medicine for quiet thought.",
+          "reason": "Replaced generic 'unlock natural power' cliché with accurate, stoic taste warning."
+        }
+      ]
+    },
+    {
+      "id": "dir-2",
+      "label": "Arctic Pharmacopoeia",
+      "positioning": "Clinical cold-biome neuro-botanicals.",
+      "value_proposition": "Standardized forest extracts calibrated for sustained cerebral flow.",
+      "personality": {
+        "traits": [
+          {
+            "trait": "Clinical",
+            "why": "Treats forest herbs with pharmaceutical rigor."
+          },
+          {
+            "trait": "Silent",
+            "why": "Energy without noise or trembling hands."
+          },
+          {
+            "trait": "Rigorous",
+            "why": "Full HPLC chemical assay printed on every batch label."
+          }
+        ],
+        "avoid": [
+          "Boho wellness",
+          "Chakra references",
+          "Spiritual escapism"
+        ]
+      },
+      "name": "KJELL",
+      "name_rationale": "Old Norse for 'spring' or 'source', crisp and monosyllabic.",
+      "alt_names": [
+        "BOREAL-EXTRACT",
+        "PERMAFROST",
+        "STILLET"
+      ],
+      "tagline": "Endurance without stimulant debt.",
+      "one_line_pitch": "Pharmaceutical-grade cold-climate adaptogen tonic for sustained intellectual focus.",
+      "voice": {
+        "rules": [
+          "Cite active triterpene percentages and solvent-free cold extractions.",
+          "Never use enthusiastic exclamation marks.",
+          "Highlight absence of caffeine crash."
+        ],
+        "sample_messages": [
+          "Batch 042: 14.2% betulinic acid, 0mg caffeine. Calibrated for 6-hour endurance."
+        ]
+      },
+      "visual": {
+        "palette": [
+          {
+            "name": "Permafrost Gray",
+            "hex": "#2E3440",
+            "role": "Stark Background"
+          },
+          {
+            "name": "Glacier Blue",
+            "hex": "#88C0D0",
+            "role": "Analytical Accent"
+          },
+          {
+            "name": "Snow White",
+            "hex": "#ECEFF4",
+            "role": "High-Contrast Data"
+          },
+          {
+            "name": "Nordic Amber",
+            "hex": "#D08770",
+            "role": "Decoction Tint"
+          }
+        ],
+        "typography": {
+          "heading": "Space Grotesk",
+          "body": "Inter",
+          "rationale": "Ultra-precise Swiss-style information architecture."
+        },
+        "shape_language": "Laboratory batch tables, calibrated measurement marks, minimalist seal.",
+        "image_style": "Sterile laboratory photography with cold atmospheric ice crystals.",
+        "avoid": [
+          "Yoga poses",
+          "Spiritual mandalas",
+          "Fruity splash photography"
+        ]
+      },
+      "revisions": [
+        {
+          "field": "name",
+          "before": "ForestFocus",
+          "after": "KJELL",
+          "reason": "Replaced cliché compound name with distinctive Nordic moniker."
+        }
+      ]
+    },
+    {
+      "id": "dir-3",
+      "label": "Primal Taiga Forager",
+      "positioning": "The raw taste of sub-arctic survival.",
+      "value_proposition": "Unfiltered wood and root decoctions brewed according to ancient reindeer-herder traditions.",
+      "personality": {
+        "traits": [
+          {
+            "trait": "Untamed",
+            "why": "Zero processing shortcuts or synthetic additives."
+          },
+          {
+            "trait": "Elemental",
+            "why": "Connects modern desks to prehistoric coniferous forests."
+          },
+          {
+            "trait": "Uncompromising",
+            "why": "No added sugar or artificial smoothing agents."
+          }
+        ],
+        "avoid": [
+          "Cute cartoon animals",
+          "Influencer aesthetics",
+          "Diet claims"
+        ]
+      },
+      "name": "ARCTIC HUMUS",
+      "name_rationale": "Humus: the rich organic forest floor substrate from which ancient roots draw life.",
+      "alt_names": [
+        "ROOTLINE",
+        "FEN-BREW",
+        "SUB-BOREAL"
+      ],
+      "tagline": "Drawn from deep forest earth.",
+      "one_line_pitch": "Wild-harvested pine and root brew for grounded physical and mental resilience.",
+      "voice": {
+        "rules": [
+          "Describe the taste as astringent, earthy, and intense.",
+          "Highlight ethical wildcrafting quotas."
+        ],
+        "sample_messages": [
+          "Brewed from fallen pine heartwood and chaga conks collected by hand."
+        ]
+      },
+      "visual": {
+        "palette": [
+          {
+            "name": "Deep Humus",
+            "hex": "#231B15",
+            "role": "Primary Wood"
+          },
+          {
+            "name": "Ochre Lichen",
+            "hex": "#C59B27",
+            "role": "Highlight"
+          },
+          {
+            "name": "Bark Grey",
+            "hex": "#5C5248",
+            "role": "Sub-Tone"
+          },
+          {
+            "name": "Canvas Cream",
+            "hex": "#F3EDE2",
+            "role": "Ground"
+          }
+        ],
+        "typography": {
+          "heading": "Syne",
+          "body": "IBM Plex Sans",
+          "rationale": "Primal organic display font paired with clean structured reading text."
+        },
+        "shape_language": "Hand-torn paper edges, woodblock stamp textures, raw topographic contours.",
+        "image_style": "Moody damp taiga photography shrouded in morning fog.",
+        "avoid": [
+          "Glossy renders",
+          "Pastel tones",
+          "Generic leaf icons"
+        ]
+      },
+      "revisions": [
+        {
+          "field": "tagline",
+          "before": "Fuel your daily grind with pure nature",
+          "after": "Drawn from deep forest earth.",
+          "reason": "Banished 'Fuel your daily grind' hustle cliché."
+        }
+      ]
+    }
+  ],
+  "scores": {
+    "dir-1": {
+      "direction_id": "dir-1",
+      "genericness": 26.5,
+      "genericness_breakdown": {
+        "embedding_sim": 21,
+        "cliche_hits": [],
+        "cliche_rate": 0
+      },
+      "perception_gap": 0.22,
+      "gap_breakdown": {
+        "category_match": 0.9,
+        "audience_match": 0.85,
+        "feel_match": 0.88
+      },
+      "pass": true
+    },
+    "dir-2": {
+      "direction_id": "dir-2",
+      "genericness": 32.1,
+      "genericness_breakdown": {
+        "embedding_sim": 27,
+        "cliche_hits": [],
+        "cliche_rate": 0
+      },
+      "perception_gap": 0.28,
+      "gap_breakdown": {
+        "category_match": 0.82,
+        "audience_match": 0.8,
+        "feel_match": 0.84
+      },
+      "pass": true
+    },
+    "dir-3": {
+      "direction_id": "dir-3",
+      "genericness": 35.4,
+      "genericness_breakdown": {
+        "embedding_sim": 29.5,
+        "cliche_hits": [],
+        "cliche_rate": 0
+      },
+      "perception_gap": 0.31,
+      "gap_breakdown": {
+        "category_match": 0.8,
+        "audience_match": 0.78,
+        "feel_match": 0.82
+      },
+      "pass": true
+    }
+  },
+  "spec": {
+    "banned_words": [
+      "mindful",
+      "clean",
+      "vitality",
+      "holistic",
+      "pure",
+      "elevating",
+      "supercharge",
+      "nature's magic",
+      "smooth"
+    ],
+    "required_traits": [
+      "Astringent honesty",
+      "Phytochemical rigor",
+      "Monastic calm"
+    ],
+    "voice_rules": [
+      "State bitter taste without apology; never promise artificial sweetness.",
+      "Ban all cheerful wellness buzzwords.",
+      "Cite active botanical species and extraction methodology directly."
+    ],
+    "palette": [
+      {
+        "hex": "#1C241D"
+      },
+      {
+        "hex": "#EBE5D8"
+      },
+      {
+        "hex": "#B87333"
+      },
+      {
+        "hex": "#7B3F00"
+      }
+    ],
+    "contrast_min": 4.5,
+    "rounds": [
+      {
+        "round": 1,
+        "attack": "Savor a deliciously refreshing burst of pure holistic forest energy!",
+        "slipped_through": true,
+        "new_rule": "Ban 'deliciously refreshing' and 'holistic energy'."
+      },
+      {
+        "round": 2,
+        "attack": "Elevate your daily mindfulness journey with nature's sweet adaptogens.",
+        "slipped_through": true,
+        "new_rule": "Ban 'mindfulness journey' and 'nature's sweet'."
+      },
+      {
+        "round": 3,
+        "attack": "A potent 0g sugar herbal decoction with heavy pine bitterness.",
+        "slipped_through": false,
+        "new_rule": "Passes requirement."
+      }
+    ]
+  },
+  "brand_kit": {
+    "summary": {
+      "idea": "An ultra-minimalist, zero-caffeine bitter herbal focus tonic brewed in cold small batches from wild Nordic forest bark, roots, and pine needles.",
+      "audience": {
+        "primary": "Deep-work knowledge workers, engineers, and architects",
+        "secondary": "Endurance athletes seeking clean physical grounding",
+        "context": "Suffer from chronic caffeine crashes, jittery afternoon anxiety, and over-sweetened artificial energy drinks."
+      },
+      "problem": "Energy drinks rely on 200mg caffeine spikes, sucralose, and fake neon flavors that wreck sleep architecture and neuro-receptors.",
+      "value": "Subtle, non-dopaminergic cognitive endurance derived from wild-foraged adaptogens, bitter triterpenes, and cold-extracted birch chaga.",
+      "constraints": [
+        "Zero added sweeteners, zero artificial flavorings",
+        "Must not look like a tech startup drink or a cartoon wellness seltzer",
+        "No cheerful pastel cans or faux-spiritual branding"
+      ],
+      "open_questions": [
+        "How to prepare first-time drinkers for the intense bitter pine resin flavor profile?"
+      ],
+      "qa": [
+        {
+          "q": "What is the single emotion a customer should feel taking their first sip?",
+          "a": "Shocked by the authentic bitter bark, followed by an immediate sense of quiet, rooted mental stillness."
+        },
+        {
+          "q": "How should the vessel be packaged?",
+          "a": "Heavy amber glass apothecary bottle with wax-sealed cap and letterpress botanical label."
+        },
+        {
+          "q": "What makes this impossible for mainstream beverage conglomerates to copy?",
+          "a": "Wild hand-foraged Arctic botanicals with seasonal vintage variances that cannot be synthesized in chemical vats."
+        }
+      ]
+    },
+    "direction": {
+      "id": "dir-1",
+      "label": "Nordic Botanical Penance",
+      "positioning": "Uncompromising bitter medicine harvested from sub-zero taiga.",
+      "value_proposition": "Cold-decocted pine resin and chaga root for cognitive endurance without nervous agitation.",
+      "personality": {
+        "traits": [
+          {
+            "trait": "Austere",
+            "why": "No sugar, no pleasantries, pure active phytochemical astringency."
+          },
+          {
+            "trait": "Rooted",
+            "why": "Honors the harsh reality of arctic permafrost flora."
+          },
+          {
+            "trait": "Monastic",
+            "why": "Approaches hydration as a solemn discipline rather than recreation."
+          }
+        ],
+        "avoid": [
+          "Bubblegum wellness",
+          "Playful mascots",
+          "Pastel cans",
+          "Flavored seltzers"
+        ]
+      },
+      "name": "BARK & TALLOW",
+      "name_rationale": "Echoes pre-industrial apothecaries where remedies were visceral and unadorned.",
+      "alt_names": [
+        "PINEVÄRN",
+        "CHAGA-66",
+        "RESIN-LAB"
+      ],
+      "tagline": "Bitter medicine for quiet thought.",
+      "one_line_pitch": "Wild Nordic pine and birch decoction for prolonged cognitive stamina without caffeine.",
+      "voice": {
+        "rules": [
+          "Acknowledge the harsh, astringent taste honestly without apology.",
+          "Use botanical taxonomical terms instead of marketing adjectives.",
+          "Reject all wellness optimism and pseudo-spiritual promises."
+        ],
+        "sample_messages": [
+          "Contains 0g sugar. Heavy in bitter triterpenes. Do not drink if you seek sweetness.",
+          "Harvested at 66°N during autumnal frost. Sediment is intact."
+        ]
+      },
+      "visual": {
+        "palette": [
+          {
+            "name": "Bog Pine",
+            "hex": "#1C241D",
+            "role": "Primary Deep Forest"
+          },
+          {
+            "name": "Birch Bark",
+            "hex": "#EBE5D8",
+            "role": "Label Canvas"
+          },
+          {
+            "name": "Lichen Amber",
+            "hex": "#B87333",
+            "role": "Apothecary Glass"
+          },
+          {
+            "name": "Iron Rust",
+            "hex": "#7B3F00",
+            "role": "Stamp Accent"
+          }
+        ],
+        "typography": {
+          "heading": "Cinzel",
+          "body": "Newsreader",
+          "rationale": "Classical epigraphic roman serif invoking ancient botanical pharmacopoeias."
+        },
+        "shape_language": "Apothecary letterpress stamps, heavy lead rules, anatomical linocut botanicals.",
+        "image_style": "Monochrome macro photography of frosted pine bark and cross-cut roots.",
+        "avoid": [
+          "Cartoon fruit icons",
+          "Neon can wraps",
+          "Playful rounded badges"
+        ]
+      },
+      "revisions": [
+        {
+          "field": "tagline",
+          "before": "Unlock the natural power of the forest",
+          "after": "Bitter medicine for quiet thought.",
+          "reason": "Replaced generic 'unlock natural power' cliché with accurate, stoic taste warning."
+        }
+      ]
+    },
+    "scores": {
+      "direction_id": "dir-1",
+      "genericness": 26.5,
+      "genericness_breakdown": {
+        "embedding_sim": 21,
+        "cliche_hits": [],
+        "cliche_rate": 0
+      },
+      "perception_gap": 0.22,
+      "gap_breakdown": {
+        "category_match": 0.9,
+        "audience_match": 0.85,
+        "feel_match": 0.88
+      },
+      "pass": true
+    },
+    "spec": {
+      "banned_words": [
+        "mindful",
+        "clean",
+        "vitality",
+        "holistic",
+        "pure",
+        "elevating",
+        "supercharge"
+      ],
+      "required_traits": [
+        "Astringent honesty",
+        "Phytochemical rigor"
+      ],
+      "voice_rules": [
+        "State bitter taste without apology",
+        "Ban all cheerful wellness buzzwords"
+      ],
+      "palette": [
+        {
+          "hex": "#1C241D"
+        },
+        {
+          "hex": "#EBE5D8"
+        },
+        {
+          "hex": "#B87333"
+        },
+        {
+          "hex": "#7B3F00"
+        }
+      ],
+      "contrast_min": 4.5,
+      "rounds": []
+    },
+    "launch": {
+      "landing_headline": "BITTER MEDICINE FOR QUIET THOUGHT.",
+      "subhead": "A zero-caffeine decoction of wild birch chaga, scots pine resin, and arctic bog roots. Unsweetened. Astringent. Formulated for 6 hours of unhurried, grounded focus without tremor or collapse.",
+      "one_line_pitch": "Wild Nordic pine and root brew for uncompromised cognitive stamina without caffeine.",
+      "social_posts": [
+        "We spent two years testing cold-decoctions in the sub-arctic taiga. There is no sugar in this bottle. It tastes like cold pine heartwood and bitter bark. Drink it when you have four uninterrupted hours of deep work ahead.",
+        "Caffeine borrows energy from tomorrow with high compound interest. BARK & TALLOW delivers triterpenic botanical endurance with zero nervous acceleration."
+      ]
+    }
+  }
+}

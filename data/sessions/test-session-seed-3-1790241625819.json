@@ -1,0 +1,767 @@
+{
+  "id": "test-session-seed-3-1790241625819",
+  "created_at": "2026-09-24T09:20:25.819Z",
+  "updated_at": "2026-09-24T09:20:25.821Z",
+  "stage": 1,
+  "history": [
+    {
+      "stage": 1,
+      "agent": "Session Initializer",
+      "input_summary": "New session started",
+      "output_summary": "Ready for strategic interview",
+      "timestamp": "2026-09-24T09:20:25.819Z"
+    }
+  ],
+  "brief": {
+    "idea": "An unbundled peer-risk parametric rain micro-insurance platform that pays gig delivery couriers instantly via mobile money the second precipitation exceeds 3mm/hr in their geofenced sector.",
+    "audience": {
+      "primary": "Urban motorcycle, moped, and e-bike delivery couriers",
+      "secondary": "Independent fleet operators and delivery cooperatives",
+      "context": "Work in torrential monsoon/rain seasons where road danger surges and order demand drops or becomes hazardous, risking daily livelihood."
+    },
+    "problem": "Traditional insurance requires days of paperwork, police reports, and claims adjusters, offering zero protection for immediate wage loss during flash storms.",
+    "value": "Automated hyper-local radar telemetry triggers instant payouts straight to mobile wallets within 90 seconds of a storm threshold breach, no claims needed.",
+    "constraints": [
+      "No claim forms or human adjusters ever",
+      "Must not look like a sterile corporate insurance conglomerate or predatory payday loan",
+      "Zero financial jargon or confusing exclusions"
+    ],
+    "open_questions": [
+      "How to present rainfall threshold radar telemetry transparently on low-end smartphones?"
+    ],
+    "qa": [
+      {
+        "q": "What is the core user experience when it starts pouring rain?",
+        "a": "The courier's phone buzzes with an instant mobile money transfer notification before their jacket is even wet."
+      },
+      {
+        "q": "Why do couriers distrust existing insurance companies?",
+        "a": "Because insurers are designed to deny claims, demand receipts, and drag cases out for weeks."
+      },
+      {
+        "q": "What is the economic model?",
+        "a": "Pay 50 cents per shift when storm probability is elevated; receive $25 instant wage stabilization payout if downpour occurs."
+      }
+    ]
+  },
+  "generic_map": {
+    "n_samples": 30,
+    "samples": [
+      {
+        "name": "RainGuard",
+        "tagline": "Protecting delivery heroes everywhere",
+        "tone_words": [
+          "trusted",
+          "caring",
+          "secure"
+        ],
+        "color_mood": "corporate blue and umbrella yellow"
+      },
+      {
+        "name": "StormShield.io",
+        "tagline": "Smart weather insurance for the gig economy",
+        "tone_words": [
+          "innovative",
+          "seamless",
+          "empowering"
+        ],
+        "color_mood": "sky blue and electric cyan"
+      },
+      {
+        "name": "CourierCare",
+        "tagline": "Peace of mind for your daily delivery journey",
+        "tone_words": [
+          "compassionate",
+          "simple",
+          "reliable"
+        ],
+        "color_mood": "pastel blue and warm orange"
+      },
+      {
+        "name": "WeatherSure",
+        "tagline": "Reimagining insurance for modern workers",
+        "tone_words": [
+          "revolutionary",
+          "effortless",
+          "modern"
+        ],
+        "color_mood": "navy blue and white"
+      },
+      {
+        "name": "GigCover",
+        "tagline": "The all-in-one safety net for freelancers",
+        "tone_words": [
+          "accessible",
+          "flexible",
+          "holistic"
+        ],
+        "color_mood": "teal and green"
+      }
+    ],
+    "embedding_points": [
+      {
+        "id": 1,
+        "x": -15.4,
+        "y": 22,
+        "cluster": 0,
+        "name": "RainGuard",
+        "tagline": "Protecting delivery heroes"
+      },
+      {
+        "id": 2,
+        "x": -17.2,
+        "y": 24.5,
+        "cluster": 0,
+        "name": "StormShield.io",
+        "tagline": "Smart weather insurance"
+      },
+      {
+        "id": 3,
+        "x": -14,
+        "y": 20.8,
+        "cluster": 0,
+        "name": "CourierCare",
+        "tagline": "Peace of mind"
+      },
+      {
+        "id": 4,
+        "x": -16.5,
+        "y": 23.1,
+        "cluster": 0,
+        "name": "WeatherSure",
+        "tagline": "Reimagining insurance"
+      },
+      {
+        "id": 5,
+        "x": -18,
+        "y": 25.4,
+        "cluster": 0,
+        "name": "GigCover",
+        "tagline": "All-in-one safety net"
+      },
+      {
+        "id": 101,
+        "x": 32.5,
+        "y": -28.1,
+        "cluster": 1,
+        "name": "RADARPAY",
+        "is_candidate": true,
+        "candidate_id": "dir-1"
+      },
+      {
+        "id": 102,
+        "x": 28,
+        "y": 36.4,
+        "cluster": 2,
+        "name": "3MM",
+        "is_candidate": true,
+        "candidate_id": "dir-2"
+      },
+      {
+        "id": 103,
+        "x": -38.2,
+        "y": -24.5,
+        "cluster": 3,
+        "name": "DOWNPOUR PROTOCOL",
+        "is_candidate": true,
+        "candidate_id": "dir-3"
+      }
+    ],
+    "centroid": [
+      -16.2,
+      23.2
+    ],
+    "common_names": [
+      "Guard",
+      "Shield",
+      "Care",
+      "Cover",
+      "Sure",
+      "Gig",
+      "Storm",
+      "Safe"
+    ],
+    "common_taglines_patterns": [
+      "Protecting delivery heroes everywhere",
+      "Smart weather insurance for the gig economy",
+      "Peace of mind for your daily delivery journey",
+      "Reimagining insurance for modern workers",
+      "The all-in-one safety net for freelancers"
+    ],
+    "common_tone_words": [
+      "trusted",
+      "caring",
+      "seamless",
+      "empowering",
+      "reliable",
+      "peace of mind"
+    ],
+    "common_color_moods": [
+      "corporate blue and umbrella yellow",
+      "sky blue and electric cyan",
+      "navy blue and white"
+    ]
+  },
+  "directions": [
+    {
+      "id": "dir-1",
+      "label": "Telemetry-First Kinetic Utility",
+      "positioning": "Unapologetic algorithmic wage hedge for bad weather.",
+      "value_proposition": "Doppler radar triggers instant cash in pocket. Zero paperwork. Zero human review.",
+      "personality": {
+        "traits": [
+          {
+            "trait": "Instantaneous",
+            "why": "Milliseconds between radar cloudburst detection and cash arrival."
+          },
+          {
+            "trait": "Mercenary",
+            "why": "Pure financial defense for gig workers navigating street-level economic volatility."
+          },
+          {
+            "trait": "Transparent",
+            "why": "Live radar Doppler telemetry displayed directly on screen; no fine print."
+          }
+        ],
+        "avoid": [
+          "Condescending empathy",
+          "Calling workers 'heroes'",
+          "Friendly insurance mascots",
+          "Cartoon umbrellas"
+        ]
+      },
+      "name": "RADARPAY",
+      "name_rationale": "Direct synthesis of Doppler radar trigger with immediate financial settlement.",
+      "alt_names": [
+        "DOPPLERCASH",
+        "CLOUDBREAK",
+        "SECTOR-3"
+      ],
+      "tagline": "When it pours, your account fills.",
+      "one_line_pitch": "Automated rainfall wage defense that transfers cash to your phone the second downpours hit your delivery grid.",
+      "voice": {
+        "rules": [
+          "Never refer to workers as 'heroes' or 'families'; treat them as independent commercial operators.",
+          "Talk about rain in millimeters per hour (mm/hr) and Doppler radar readings, never fuzzy weather forecasts.",
+          "Highlight speed of cash payout in exact seconds."
+        ],
+        "sample_messages": [
+          "Precipitation at Sector 4 reached 3.4mm/hr. $22.50 credited to your wallet at 14:02:18.",
+          "Zero claims filed. Zero adjusters consulted. Telemetry confirmed."
+        ]
+      },
+      "visual": {
+        "palette": [
+          {
+            "name": "Asphalt Wet",
+            "hex": "#0E1116",
+            "role": "Base Street Surface"
+          },
+          {
+            "name": "Radar Amber",
+            "hex": "#FFAA00",
+            "role": "Storm Intensity Warning"
+          },
+          {
+            "name": "Reflective Vest Silver",
+            "hex": "#E6EDF3",
+            "role": "High-Visibility Text"
+          },
+          {
+            "name": "Doppler Violet",
+            "hex": "#5E35B1",
+            "role": "Radar Sector Band"
+          }
+        ],
+        "typography": {
+          "heading": "Cabinet Grotesk",
+          "body": "JetBrains Mono",
+          "rationale": "High-impact industrial headline paired with clean monospaced telemetry figures."
+        },
+        "shape_language": "Isobar lines, radar sweep grids, high-visibility reflective caution chevrons.",
+        "image_style": "Night-time long exposures of wet neon streets, motorcycle headlights in rain, Doppler radar feeds.",
+        "avoid": [
+          "Cartoon umbrellas",
+          "Stock photos of happy people in raincoats",
+          "Corporate blue badge logos"
+        ]
+      },
+      "revisions": [
+        {
+          "field": "tagline",
+          "before": "Smart protection for hardworking delivery heroes",
+          "after": "When it pours, your account fills.",
+          "reason": "Stripped patronizing 'delivery heroes' cliché; replaced with clear economic consequence."
+        }
+      ]
+    },
+    {
+      "id": "dir-2",
+      "label": "Parametric Threshold Minimalist",
+      "positioning": "A binary contract with the sky.",
+      "value_proposition": "Precision rain trigger: 3mm of rain = $25 cash. Nothing else to understand.",
+      "personality": {
+        "traits": [
+          {
+            "trait": "Binary",
+            "why": "Either it rained 3mm or it did not. No nuance, no negotiations."
+          },
+          {
+            "trait": "Utilitarian",
+            "why": "Functions like a circuit breaker for personal income."
+          },
+          {
+            "trait": "Sovereign",
+            "why": "Puts couriers in direct control of their shift risk."
+          }
+        ],
+        "avoid": [
+          "Fine print policies",
+          "Deductibles",
+          "Insurance jargon",
+          "Underwriting interviews"
+        ]
+      },
+      "name": "3MM",
+      "name_rationale": "The exact physical rainfall threshold that triggers immediate cash payout.",
+      "alt_names": [
+        "ISOBAR",
+        "PRECIP",
+        "GAUGE-9"
+      ],
+      "tagline": "Three millimeters between storm and payout.",
+      "one_line_pitch": "Binary parametric rain protection paying out at exactly 3mm/hr rainfall threshold.",
+      "voice": {
+        "rules": [
+          "Strip all clauses down to single-clause statements.",
+          "Treat insurance like physics rather than finance."
+        ],
+        "sample_messages": [
+          "Threshold: 3.0mm/hr. Current reading: 3.2mm/hr. Trigger fired. Funds dispersed."
+        ]
+      },
+      "visual": {
+        "palette": [
+          {
+            "name": "Storm Black",
+            "hex": "#111418",
+            "role": "Canvas"
+          },
+          {
+            "name": "Laser Cyan",
+            "hex": "#00E5FF",
+            "role": "Threshold Indicator"
+          },
+          {
+            "name": "Gauge White",
+            "hex": "#FFFFFF",
+            "role": "Primary Metric"
+          },
+          {
+            "name": "Storm Cloud",
+            "hex": "#3A4454",
+            "role": "Sub-surface"
+          }
+        ],
+        "typography": {
+          "heading": "Space Grotesk",
+          "body": "Inter",
+          "rationale": "Clean mathematical geometry with flawless mobile screen legibility."
+        },
+        "shape_language": "Digital dials, liquid level gauges, precise millimeter crosshairs.",
+        "image_style": "Monochrome macro water droplet impacts on road surfaces.",
+        "avoid": [
+          "Smiley mascots",
+          "Handshake icons",
+          "Piggy banks"
+        ]
+      },
+      "revisions": [
+        {
+          "field": "name",
+          "before": "RainShield",
+          "after": "3MM",
+          "reason": "Replaced overused 'Shield' stem with physical metric definition."
+        }
+      ]
+    },
+    {
+      "id": "dir-3",
+      "label": "Courier Guild Protocol",
+      "positioning": "Mutual risk defense collective built by and for urban riders.",
+      "value_proposition": "Decentralized weather pool operated as a transparent utility for delivery riders.",
+      "personality": {
+        "traits": [
+          {
+            "trait": "Solidary",
+            "why": "Built on peer-to-peer solidarity rather than extractive insurance margins."
+          },
+          {
+            "trait": "Gritty",
+            "why": "Forged in the reality of urban asphalt and winter squalls."
+          },
+          {
+            "trait": "Defiant",
+            "why": "Refuses to let corporate platforms leave riders unprotected."
+          }
+        ],
+        "avoid": [
+          "Corporate platitudes",
+          "Pity-based messaging",
+          "Suits and ties"
+        ]
+      },
+      "name": "DOWNPOUR PROTOCOL",
+      "name_rationale": "Frames the emergency rain response as an unyielding technical protocol.",
+      "alt_names": [
+        "ASPHALT-MUTUAL",
+        "SHIFTGUARD",
+        "TORRENT"
+      ],
+      "tagline": "We ride through storms. The guild covers the rest.",
+      "one_line_pitch": "Peer-risk parametric storm pool built specifically for high-exposure delivery fleets.",
+      "voice": {
+        "rules": [
+          "Speak rider to rider, with street-level respect and directness.",
+          "Emphasize collective financial self-defense."
+        ],
+        "sample_messages": [
+          "Monsoon squall confirmed over downtown grid. All active riders paid out automatically."
+        ]
+      },
+      "visual": {
+        "palette": [
+          {
+            "name": "Asphalt Wet",
+            "hex": "#1A1B1E",
+            "role": "Base Canvas"
+          },
+          {
+            "name": "Neon Yellow",
+            "hex": "#D4FF00",
+            "role": "Safety Accent"
+          },
+          {
+            "name": "Rain Slate",
+            "hex": "#4C566A",
+            "role": "Structural Lines"
+          },
+          {
+            "name": "Reflective White",
+            "hex": "#F8F9FA",
+            "role": "Primary Text"
+          }
+        ],
+        "typography": {
+          "heading": "Syne",
+          "body": "Space Mono",
+          "rationale": "Raw rebellious headline with industrial monospaced technical body."
+        },
+        "shape_language": "Hazard striping, stencil stamps, modular grid tags.",
+        "image_style": "Gritty action shots of helmeted couriers navigating wet neon street traffic.",
+        "avoid": [
+          "Suited corporate spokespeople",
+          "Clean pastel graphics"
+        ]
+      },
+      "revisions": [
+        {
+          "field": "tagline",
+          "before": "Peace of mind for your everyday delivery journey",
+          "after": "We ride through storms. The guild covers the rest.",
+          "reason": "Banished 'Peace of mind' cliché and corporate wellness language."
+        }
+      ]
+    }
+  ],
+  "scores": {
+    "dir-1": {
+      "direction_id": "dir-1",
+      "genericness": 22.8,
+      "genericness_breakdown": {
+        "embedding_sim": 17.5,
+        "cliche_hits": [],
+        "cliche_rate": 0
+      },
+      "perception_gap": 0.19,
+      "gap_breakdown": {
+        "category_match": 0.91,
+        "audience_match": 0.89,
+        "feel_match": 0.88
+      },
+      "pass": true
+    },
+    "dir-2": {
+      "direction_id": "dir-2",
+      "genericness": 28.4,
+      "genericness_breakdown": {
+        "embedding_sim": 23.2,
+        "cliche_hits": [],
+        "cliche_rate": 0
+      },
+      "perception_gap": 0.24,
+      "gap_breakdown": {
+        "category_match": 0.85,
+        "audience_match": 0.82,
+        "feel_match": 0.86
+      },
+      "pass": true
+    },
+    "dir-3": {
+      "direction_id": "dir-3",
+      "genericness": 34,
+      "genericness_breakdown": {
+        "embedding_sim": 28.1,
+        "cliche_hits": [],
+        "cliche_rate": 0
+      },
+      "perception_gap": 0.27,
+      "gap_breakdown": {
+        "category_match": 0.82,
+        "audience_match": 0.8,
+        "feel_match": 0.83
+      },
+      "pass": true
+    }
+  },
+  "spec": {
+    "banned_words": [
+      "delivery heroes",
+      "peace of mind",
+      "caring",
+      "seamless",
+      "reimagining",
+      "safety net",
+      "supercharge",
+      "family"
+    ],
+    "required_traits": [
+      "Algorithmic transparency",
+      "Kinetic urgency",
+      "Street-level directness"
+    ],
+    "voice_rules": [
+      "Quote rain in mm/hr and Doppler radar telemetry; never use vague weather poetry.",
+      "Ban the patronizing term 'delivery heroes'. Address couriers as professional fleet operators.",
+      "State payout timing in exact seconds."
+    ],
+    "palette": [
+      {
+        "hex": "#0E1116"
+      },
+      {
+        "hex": "#FFAA00"
+      },
+      {
+        "hex": "#E6EDF3"
+      },
+      {
+        "hex": "#5E35B1"
+      }
+    ],
+    "contrast_min": 4.5,
+    "rounds": [
+      {
+        "round": 1,
+        "attack": "We care about our delivery heroes and want to give them peace of mind in every shower!",
+        "slipped_through": true,
+        "new_rule": "Permanently ban 'delivery heroes' and 'peace of mind'."
+      },
+      {
+        "round": 2,
+        "attack": "Enjoy seamless smart insurance coverage for modern gig lifestyles.",
+        "slipped_through": true,
+        "new_rule": "Ban 'seamless' and 'smart insurance'."
+      },
+      {
+        "round": 3,
+        "attack": "3.2mm/hr precipitation registered at Sector 7. $25 payout deployed in 48 seconds.",
+        "slipped_through": false,
+        "new_rule": "Passes requirement."
+      }
+    ]
+  },
+  "brand_kit": {
+    "summary": {
+      "idea": "An unbundled peer-risk parametric rain micro-insurance platform that pays gig delivery couriers instantly via mobile money the second precipitation exceeds 3mm/hr in their geofenced sector.",
+      "audience": {
+        "primary": "Urban motorcycle, moped, and e-bike delivery couriers",
+        "secondary": "Independent fleet operators and delivery cooperatives",
+        "context": "Work in torrential monsoon/rain seasons where road danger surges and order demand drops or becomes hazardous, risking daily livelihood."
+      },
+      "problem": "Traditional insurance requires days of paperwork, police reports, and claims adjusters, offering zero protection for immediate wage loss during flash storms.",
+      "value": "Automated hyper-local radar telemetry triggers instant payouts straight to mobile wallets within 90 seconds of a storm threshold breach, no claims needed.",
+      "constraints": [
+        "No claim forms or human adjusters ever",
+        "Must not look like a sterile corporate insurance conglomerate or predatory payday loan",
+        "Zero financial jargon or confusing exclusions"
+      ],
+      "open_questions": [
+        "How to present rainfall threshold radar telemetry transparently on low-end smartphones?"
+      ],
+      "qa": [
+        {
+          "q": "What is the core user experience when it starts pouring rain?",
+          "a": "The courier's phone buzzes with an instant mobile money transfer notification before their jacket is even wet."
+        },
+        {
+          "q": "Why do couriers distrust existing insurance companies?",
+          "a": "Because insurers are designed to deny claims, demand receipts, and drag cases out for weeks."
+        },
+        {
+          "q": "What is the economic model?",
+          "a": "Pay 50 cents per shift when storm probability is elevated; receive $25 instant wage stabilization payout if downpour occurs."
+        }
+      ]
+    },
+    "direction": {
+      "id": "dir-1",
+      "label": "Telemetry-First Kinetic Utility",
+      "positioning": "Unapologetic algorithmic wage hedge for bad weather.",
+      "value_proposition": "Doppler radar triggers instant cash in pocket. Zero paperwork. Zero human review.",
+      "personality": {
+        "traits": [
+          {
+            "trait": "Instantaneous",
+            "why": "Milliseconds between radar cloudburst detection and cash arrival."
+          },
+          {
+            "trait": "Mercenary",
+            "why": "Pure financial defense for gig workers navigating street-level economic volatility."
+          },
+          {
+            "trait": "Transparent",
+            "why": "Live radar Doppler telemetry displayed directly on screen; no fine print."
+          }
+        ],
+        "avoid": [
+          "Condescending empathy",
+          "Calling workers 'heroes'",
+          "Friendly insurance mascots",
+          "Cartoon umbrellas"
+        ]
+      },
+      "name": "RADARPAY",
+      "name_rationale": "Direct synthesis of Doppler radar trigger with immediate financial settlement.",
+      "alt_names": [
+        "DOPPLERCASH",
+        "CLOUDBREAK",
+        "SECTOR-3"
+      ],
+      "tagline": "When it pours, your account fills.",
+      "one_line_pitch": "Automated rainfall wage defense that transfers cash to your phone the second downpours hit your delivery grid.",
+      "voice": {
+        "rules": [
+          "Never refer to workers as 'heroes' or 'families'; treat them as independent commercial operators.",
+          "Talk about rain in millimeters per hour (mm/hr) and Doppler radar readings, never fuzzy weather forecasts.",
+          "Highlight speed of cash payout in exact seconds."
+        ],
+        "sample_messages": [
+          "Precipitation at Sector 4 reached 3.4mm/hr. $22.50 credited to your wallet at 14:02:18.",
+          "Zero claims filed. Zero adjusters consulted. Telemetry confirmed."
+        ]
+      },
+      "visual": {
+        "palette": [
+          {
+            "name": "Asphalt Wet",
+            "hex": "#0E1116",
+            "role": "Base Street Surface"
+          },
+          {
+            "name": "Radar Amber",
+            "hex": "#FFAA00",
+            "role": "Storm Intensity Warning"
+          },
+          {
+            "name": "Reflective Vest Silver",
+            "hex": "#E6EDF3",
+            "role": "High-Visibility Text"
+          },
+          {
+            "name": "Doppler Violet",
+            "hex": "#5E35B1",
+            "role": "Radar Sector Band"
+          }
+        ],
+        "typography": {
+          "heading": "Cabinet Grotesk",
+          "body": "JetBrains Mono",
+          "rationale": "High-impact industrial headline paired with clean monospaced telemetry figures."
+        },
+        "shape_language": "Isobar lines, radar sweep grids, high-visibility reflective caution chevrons.",
+        "image_style": "Night-time long exposures of wet neon streets, motorcycle headlights in rain, Doppler radar feeds.",
+        "avoid": [
+          "Cartoon umbrellas",
+          "Stock photos of happy people in raincoats",
+          "Corporate blue badge logos"
+        ]
+      },
+      "revisions": [
+        {
+          "field": "tagline",
+          "before": "Smart protection for hardworking delivery heroes",
+          "after": "When it pours, your account fills.",
+          "reason": "Stripped patronizing 'delivery heroes' cliché; replaced with clear economic consequence."
+        }
+      ]
+    },
+    "scores": {
+      "direction_id": "dir-1",
+      "genericness": 22.8,
+      "genericness_breakdown": {
+        "embedding_sim": 17.5,
+        "cliche_hits": [],
+        "cliche_rate": 0
+      },
+      "perception_gap": 0.19,
+      "gap_breakdown": {
+        "category_match": 0.91,
+        "audience_match": 0.89,
+        "feel_match": 0.88
+      },
+      "pass": true
+    },
+    "spec": {
+      "banned_words": [
+        "delivery heroes",
+        "peace of mind",
+        "caring",
+        "seamless"
+      ],
+      "required_traits": [
+        "Algorithmic transparency",
+        "Kinetic urgency"
+      ],
+      "voice_rules": [
+        "Quote rain in mm/hr and Doppler radar telemetry",
+        "Ban the term delivery heroes"
+      ],
+      "palette": [
+        {
+          "hex": "#0E1116"
+        },
+        {
+          "hex": "#FFAA00"
+        },
+        {
+          "hex": "#E6EDF3"
+        },
+        {
+          "hex": "#5E35B1"
+        }
+      ],
+      "contrast_min": 4.5,
+      "rounds": []
+    },
+    "launch": {
+      "landing_headline": "WHEN IT POURS, YOUR ACCOUNT FILLS.",
+      "subhead": "The moment precipitation exceeds 3.0mm/hr in your delivery sector, Doppler radar sends cash directly to your phone. Zero claims to file. Zero waiting. Zero adjusters.",
+      "one_line_pitch": "Automated rainfall wage defense that transfers cash to your phone the second downpours hit your delivery grid.",
+      "social_posts": [
+        "Insurers take three weeks to approve a claim and look for reasons to deny it. RADARPAY connects Doppler weather radar directly to your mobile wallet. When the clouds dump 3mm/hr on your route, you get paid in under 90 seconds.",
+        "You ride through storms while corporate platforms take their cut. RADARPAY is pure financial defense for wet asphalt."
+      ]
+    }
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "name_stems": [
+    "ly", "ify", "io", "ai", "hub", "flow", "pulse", "sync", "zen", "aura", 
+    "nexus", "nova", "prime", "vault", "mind", "guard", "shield", "craft", 
+    "forge", "omni", "hyper", "meta", "spark", "apex", "sphere", "wave"
+  ],
+  "tagline_patterns": [
+    "the future of",
+    "supercharge your",
+    "empowering",
+    "made simple",
+    "all-in-one",
+    "reimagining",
+    "unleash your",
+    "for modern teams",
+    "redefined",
+    "smart way to",
+    "next generation",
+    "frictionless",
+    "effortless",
+    "seamless"
+  ],
+  "tone_words": [
+    "innovative",
+    "seamless",
+    "empowering",
+    "robust",
+    "holistic",
+    "dynamic",
+    "cutting-edge",
+    "revolutionary",
+    "collaborative",
+    "disruptive",
+    "intelligent",
+    "trusted",
+    "intuitive",
+    "scalable",
+    "elevate",
+    "streamlined",
+    "passionate",
+    "bespoke"
+  ],
+  "color_moods": [
+    "tech blue and clean white",
+    "corporate navy with cyan accents",
+    "pastel purple and lilac gradient",
+    "neon electric indigo",
+    "earthy soft green and off-white"
+  ]
+}
