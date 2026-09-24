@@ -1,5 +1,10 @@
 export function getGeminiApiKey(): string | undefined {
-  return process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  const geminiKey = process.env.GEMINI_API_KEY;
+  const googleKey = process.env.GOOGLE_API_KEY;
+  // If one starts with standard Google AI Studio prefix 'AIzaSy', prefer it
+  if (geminiKey && geminiKey.startsWith("AIzaSy")) return geminiKey;
+  if (googleKey && googleKey.startsWith("AIzaSy")) return googleKey;
+  return geminiKey || googleKey;
 }
 
 export function getOpenRouterApiKey(): string | undefined {
@@ -22,8 +27,15 @@ export const CONFIG = {
   get LLM_PROVIDER(): string {
     const fromEnv = process.env.LLM_PROVIDER?.toLowerCase();
     if (fromEnv) return fromEnv;
-    if (getOpenRouterApiKey()) return "openrouter";
+    // If LLM_MODEL is explicitly an OpenRouter model name (contains /)
+    const model = process.env.LLM_MODEL || process.env.OPENROUTER_MODEL;
+    if (model && model.includes("/") && getOpenRouterApiKey()) {
+      return "openrouter";
+    }
+    // As per user spec: OpenRouter is selected when LLM_PROVIDER=openrouter.
+    // If LLM_PROVIDER is unset, prefer Gemini if Gemini/Google API key is configured.
     if (getGeminiApiKey()) return "gemini";
+    if (getOpenRouterApiKey()) return "openrouter";
     if (process.env.OPENAI_API_KEY) return "openai";
     return "none";
   },
@@ -34,19 +46,19 @@ export const CONFIG = {
       if (!model) {
         if (this.isMockMode) return "mock-openrouter-model";
         throw new Error(
-          "LLM_MODEL environment variable is unset. When LLM_PROVIDER=openrouter, LLM_MODEL must be explicitly set in .env.local (e.g. LLM_MODEL=meta-llama/llama-3.3-70b-instruct:free). Never falling back to Gemini default model."
+          "LLM_MODEL environment variable is unset. When LLM_PROVIDER=openrouter, LLM_MODEL must be explicitly set in .env.local (e.g. LLM_MODEL=nex-agi/nex-n2.5-mini:free or google/gemini-2.0-flash-001). Never falling back to Gemini default model."
         );
       }
-      if (model === "gemini-3.6-flash" || model === "gemini-2.5-flash") {
+      if (model.startsWith("gemini-")) {
         if (this.isMockMode) return "mock-openrouter-model";
         throw new Error(
-          `Invalid LLM_MODEL for OpenRouter: "${model}" is the Gemini default model name. Please configure a valid OpenRouter model ID in .env.local (e.g. LLM_MODEL=meta-llama/llama-3.3-70b-instruct:free or google/gemini-2.0-flash-001). Never falling back to Gemini default model.`
+          `Invalid LLM_MODEL for OpenRouter: "${model}" is a Gemini direct model name without an OpenRouter provider prefix. For OpenRouter, set LLM_MODEL in .env.local to a valid OpenRouter model ID (e.g. LLM_MODEL=nex-agi/nex-n2.5-mini:free or google/gemini-2.0-flash-001). Never falling back to Gemini default model.`
         );
       }
       return model;
     }
     if (process.env.LLM_MODEL) return process.env.LLM_MODEL;
-    return "gemini-3.6-flash";
+    return "gemini-3.5-flash";
   },
   get FALLBACK_LLM_MODEL(): string | undefined {
     return process.env.LLM_FALLBACK_MODEL || undefined;

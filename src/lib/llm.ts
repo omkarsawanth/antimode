@@ -105,16 +105,16 @@ export function resolveLLMModel(provider: string, customModel?: string): string 
     if (!model) {
       if (CONFIG.isMockMode) return "mock-openrouter-model";
       throw new LLMError(
-        "LLM_MODEL environment variable is unset. When LLM_PROVIDER=openrouter, you must set LLM_MODEL in .env.local (e.g. LLM_MODEL=meta-llama/llama-3.3-70b-instruct:free). Never falling back to Gemini default model.",
+        "LLM_MODEL environment variable is unset. When LLM_PROVIDER=openrouter, you must set LLM_MODEL in .env.local (e.g. LLM_MODEL=nex-agi/nex-n2.5-mini:free or google/gemini-2.0-flash-001). Never falling back to Gemini default model.",
         400,
         "openrouter",
         "unset"
       );
     }
-    if (model === "gemini-3.6-flash" || model === "gemini-2.5-flash") {
+    if (model.startsWith("gemini-")) {
       if (CONFIG.isMockMode) return "mock-openrouter-model";
       throw new LLMError(
-        `Invalid LLM_MODEL for OpenRouter: "${model}". "${model}" is the Gemini default model name. Please set LLM_MODEL in .env.local to a valid OpenRouter model ID (e.g. LLM_MODEL=meta-llama/llama-3.3-70b-instruct:free or google/gemini-2.0-flash-001). Never falling back to Gemini default model.`,
+        `Invalid LLM_MODEL for OpenRouter: "${model}". "${model}" is a Gemini direct model name without an OpenRouter provider prefix. Please set LLM_MODEL in .env.local to a valid OpenRouter model ID (e.g. LLM_MODEL=nex-agi/nex-n2.5-mini:free or google/gemini-2.0-flash-001). Never falling back to Gemini default model.`,
         400,
         "openrouter",
         model
@@ -124,14 +124,14 @@ export function resolveLLMModel(provider: string, customModel?: string): string 
   }
 
   if (provider === "gemini") {
-    return process.env.LLM_MODEL || "gemini-3.6-flash";
+    return process.env.LLM_MODEL || "gemini-3.5-flash";
   }
 
   if (provider === "openai") {
     return process.env.LLM_MODEL || process.env.OPENAI_MODEL || "gpt-4o-mini";
   }
 
-  return process.env.LLM_MODEL || "gemini-3.6-flash";
+  return process.env.LLM_MODEL || "gemini-3.5-flash";
 }
 
 function getCacheKey(prompt: string, model: string, temperature: number, maxTokens: number): string {
