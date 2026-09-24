@@ -52,6 +52,7 @@ export async function POST(req: NextRequest) {
       prompt,
       schema: GuardianResultSchema,
       temperature: 0.1,
+      stage: 9,
       mockFallback: () => {
         // If text contains cliché words or marketing enthusiasm, return violation
         const isOffBrand =

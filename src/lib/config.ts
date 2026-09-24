@@ -19,8 +19,18 @@ export const CONFIG = {
   BASELINE_SAMPLE_COUNT: 30,
 
   // LLM Config
+  get LLM_PROVIDER(): string {
+    const fromEnv = process.env.LLM_PROVIDER?.toLowerCase();
+    if (fromEnv) return fromEnv;
+    if (getOpenRouterApiKey()) return "openrouter";
+    if (getGeminiApiKey()) return "gemini";
+    if (process.env.OPENAI_API_KEY) return "openai";
+    return "none";
+  },
   get DEFAULT_LLM_MODEL(): string {
-    return process.env.LLM_MODEL || "gemini-3.6-flash";
+    if (process.env.LLM_MODEL) return process.env.LLM_MODEL;
+    if (this.LLM_PROVIDER === "openrouter") return "meta-llama/llama-3.3-70b-instruct:free";
+    return "gemini-3.6-flash";
   },
   get FALLBACK_LLM_MODEL(): string | undefined {
     return process.env.LLM_FALLBACK_MODEL || undefined;

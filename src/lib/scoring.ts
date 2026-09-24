@@ -36,7 +36,8 @@ export function getCliches(): ClichesData {
 
 export async function calculateGenericnessScore(
   direction: Direction,
-  genericMap: GenericMap
+  genericMap: GenericMap,
+  stage: string | number = 3
 ): Promise<{
   genericness: number;
   breakdown: { embedding_sim: number; cliche_hits: string[]; cliche_rate: number };
@@ -52,7 +53,7 @@ export async function calculateGenericnessScore(
   );
 
   // Batch embed candidate and all baseline samples in ONE batched request
-  const allEmbeddings = await getEmbeddings([candidateText, ...sampleTexts]);
+  const allEmbeddings = await getEmbeddings([candidateText, ...sampleTexts], stage);
   const candidateEmbedding = allEmbeddings[0];
   const baselineEmbeddings = allEmbeddings.slice(1);
 

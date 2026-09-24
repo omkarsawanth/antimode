@@ -65,6 +65,7 @@ export async function POST(req: NextRequest) {
       prompt,
       schema: InterviewResponseSchema,
       temperature: 0.4,
+      stage: 1,
       mockFallback: () => {
         if (turnCount < 3) {
           const sampleQuestions = [

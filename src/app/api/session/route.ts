@@ -5,11 +5,14 @@ import { CONFIG } from "@/lib/config";
 
 function getSystemInfo() {
   const isMock = CONFIG.isMockMode;
-  const provider = process.env.GEMINI_API_KEY ? "Gemini" : process.env.OPENAI_API_KEY ? "OpenAI" : "None";
+  const p = CONFIG.LLM_PROVIDER;
+  const providerLabel =
+    p === "openrouter" ? "OpenRouter" : p === "gemini" ? "Gemini" : p === "openai" ? "OpenAI" : "None";
   return {
     is_mock_mode: isMock,
-    provider: isMock ? "Mock / Fixture" : provider,
+    provider: isMock ? "Mock / Fixture" : providerLabel,
     model: CONFIG.DEFAULT_LLM_MODEL,
+    embedding_model: CONFIG.DEFAULT_EMBEDDING_MODEL,
   };
 }
 

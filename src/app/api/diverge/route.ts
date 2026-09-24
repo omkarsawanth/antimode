@@ -63,6 +63,7 @@ export async function POST(req: NextRequest) {
       prompt: divergePrompt,
       schema: DivergeResponseSchema,
       temperature: 0.85,
+      stage: 3,
       mockFallback: () => fixture.directions,
     });
 
@@ -87,6 +88,7 @@ export async function POST(req: NextRequest) {
         prompt: criticPrompt,
         schema: DirectionSchema,
         temperature: 0.3,
+        stage: 3,
         mockFallback: () => ({
           ...rawDir,
           revisions: [
@@ -109,7 +111,7 @@ export async function POST(req: NextRequest) {
 
     for (let i = 0; i < refinedDirections.length; i++) {
       const dir = refinedDirections[i];
-      const genScore = await calculateGenericnessScore(dir, session.generic_map);
+      const genScore = await calculateGenericnessScore(dir, session.generic_map, 3);
 
       // 4. Blind Read (3 fresh reads seeing only name, tagline, palette)
       const paletteSummary = dir.visual.palette.map((p) => `- ${p.role}: ${p.hex} (${p.name})`).join("\n");
@@ -125,6 +127,7 @@ export async function POST(req: NextRequest) {
           prompt: `${blindPrompt}\n\n[Fresh reader #${r}]`,
           schema: BlindReadSchema,
           temperature: 0.7,
+          stage: 4,
           mockFallback: () => {
             const fallbackRead = fixture.blind_reads[r - 1] || fixture.blind_reads[0];
             return {
@@ -150,6 +153,7 @@ export async function POST(req: NextRequest) {
         prompt: judgePrompt,
         schema: JudgeResponseSchema,
         temperature: 0.2,
+        stage: 4,
         mockFallback: () => {
           const fallbackScore = fixture.scores[dir.id] || fixture.scores["dir-1"];
           return {

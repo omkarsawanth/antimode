@@ -1,6 +1,8 @@
 import crypto from "crypto";
 import { ZodSchema } from "zod";
-import { CONFIG, getGeminiApiKey } from "./config";
+import { CONFIG, getGeminiApiKey, getOpenRouterApiKey } from "./config";
+import { recordLLMCall } from "./metrics";
+import { isQuotaExhausted } from "./embeddings";
 
 // Prompt-hash response cache
 const llmCache = new Map<string, any>();
@@ -13,7 +15,7 @@ export class LLMError extends Error {
   constructor(
     message: string,
     status: number = 500,
-    provider: string = "gemini",
+    provider: string = "openrouter",
     model: string = CONFIG.DEFAULT_LLM_MODEL
   ) {
     super(message);
@@ -31,6 +33,7 @@ export interface CallLLMOptions<T> {
   timeoutMs?: number;
   mockFallback: () => T;
   model?: string;
+  stage?: number | string;
 }
 
 function getCacheKey(prompt: string, model: string, temperature: number): string {
@@ -38,26 +41,69 @@ function getCacheKey(prompt: string, model: string, temperature: number): string
   return crypto.createHash("sha256").update(content).digest("hex");
 }
 
+// Clean JSON string - handles markdown blocks, preambles, and raw JSON
+export function extractJson(raw: string): any {
+  let cleaned = raw.trim();
+  if (cleaned.startsWith("```")) {
+    cleaned = cleaned.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+  }
+
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    // If model added conversational pre-amble/post-amble, locate first { or [ to matching } or ]
+    const firstBrace = cleaned.indexOf("{");
+    const firstBracket = cleaned.indexOf("[");
+
+    let startIndex = -1;
+    let isObject = false;
+
+    if (firstBrace !== -1 && firstBracket !== -1) {
+      if (firstBrace < firstBracket) {
+        startIndex = firstBrace;
+        isObject = true;
+      } else {
+        startIndex = firstBracket;
+        isObject = false;
+      }
+    } else if (firstBrace !== -1) {
+      startIndex = firstBrace;
+      isObject = true;
+    } else if (firstBracket !== -1) {
+      startIndex = firstBracket;
+      isObject = false;
+    }
+
+    if (startIndex !== -1) {
+      const endIndex = isObject ? cleaned.lastIndexOf("}") : cleaned.lastIndexOf("]");
+      if (endIndex > startIndex) {
+        const candidate = cleaned.substring(startIndex, endIndex + 1);
+        return JSON.parse(candidate);
+      }
+    }
+
+    throw new Error(`Failed to extract valid JSON from model response: "${raw.substring(0, 200)}..."`);
+  }
+}
+
 export async function callLLM<T>(options: CallLLMOptions<T>): Promise<T> {
   const {
     prompt,
     schema,
     temperature = 0.7,
-    timeoutMs = 45000,
+    timeoutMs = 50000,
     mockFallback,
     model = CONFIG.DEFAULT_LLM_MODEL,
+    stage,
   } = options;
 
   const startTime = Date.now();
-  const apiKey = getGeminiApiKey();
-  const provider = apiKey ? "gemini" : process.env.OPENAI_API_KEY ? "openai" : "none";
+  const provider = CONFIG.LLM_PROVIDER;
 
   // 1. If explicitly in mock mode, return fixture JSON
   if (CONFIG.isMockMode) {
     const elapsed = Date.now() - startTime;
-    console.log(
-      `[LLM] MODE: MOCK | PROVIDER: fixture | MODEL: ${model} | LATENCY: ${elapsed}ms | CACHE: N/A`
-    );
+    recordLLMCall(stage, elapsed, "fixture", model);
     return mockFallback();
   }
 
@@ -71,9 +117,137 @@ export async function callLLM<T>(options: CallLLMOptions<T>): Promise<T> {
     return llmCache.get(cacheKey) as T;
   }
 
-  // Helper for Gemini API invocation with exponential backoff on retryable status codes
   const RETRYABLE_STATUS_CODES = [429, 500, 502, 503, 504];
 
+  // OpenRouter Chat Completions Call
+  async function callOpenRouterApi(
+    currentPrompt: string,
+    targetModel: string,
+    apiKey: string,
+    maxTries: number = 4
+  ): Promise<string> {
+    const url = "https://openrouter.ai/api/v1/chat/completions";
+    let lastStatus = 500;
+
+    for (let attempt = 0; attempt < maxTries; attempt++) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+            "HTTP-Referer": "https://antimode.dev",
+            "X-Title": "Antimode Brand Engine",
+          },
+          signal: controller.signal,
+          body: JSON.stringify({
+            model: targetModel,
+            messages: [{ role: "user", content: currentPrompt }],
+            temperature,
+            // Do NOT include response_format: { type: "json_object" } to support all open models
+          }),
+        });
+
+        // Check for quota exhaustion first - DO NOT RETRY
+        if (res.status === 429 || res.status === 402) {
+          const errText = await res.text();
+          if (isQuotaExhausted(res.status, errText)) {
+            console.warn(`[LLM] OpenRouter quota exhausted (HTTP ${res.status}). Skipping retries.`);
+            throw new LLMError(
+              `OpenRouter quota exhausted (HTTP ${res.status}): ${errText}`,
+              res.status,
+              "openrouter",
+              targetModel
+            );
+          }
+
+          // Transient 429 rate limit
+          lastStatus = 429;
+          if (attempt < maxTries - 1) {
+            const delay = 2000 * Math.pow(2, attempt) + Math.random() * 1000;
+            console.warn(
+              `[LLM] HTTP 429 Rate Limit from OpenRouter (${targetModel}). Retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${maxTries - 1})...`
+            );
+            await new Promise((r) => setTimeout(r, delay));
+            continue;
+          }
+          throw new LLMError(
+            `OpenRouter API rate limit exceeded (HTTP 429): ${errText}`,
+            429,
+            "openrouter",
+            targetModel
+          );
+        }
+
+        // 5xx retryable status
+        if (res.status >= 500 && res.status <= 504) {
+          lastStatus = res.status;
+          const errText = await res.text();
+          if (attempt < maxTries - 1) {
+            const delay = 2000 * Math.pow(2, attempt) + Math.random() * 1000;
+            console.warn(
+              `[LLM] HTTP ${res.status} error from OpenRouter (${targetModel}). Retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${maxTries - 1})...`
+            );
+            await new Promise((r) => setTimeout(r, delay));
+            continue;
+          }
+          throw new LLMError(
+            `OpenRouter API error (HTTP ${res.status}): ${errText}`,
+            res.status,
+            "openrouter",
+            targetModel
+          );
+        }
+
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new LLMError(
+            `OpenRouter API error ${res.status}: ${errText}`,
+            res.status,
+            "openrouter",
+            targetModel
+          );
+        }
+
+        const data = await res.json();
+        const text = data.choices?.[0]?.message?.content;
+        if (!text) {
+          throw new LLMError("Empty message response from OpenRouter API", 502, "openrouter", targetModel);
+        }
+        return text;
+      } catch (fetchErr: any) {
+        if (fetchErr instanceof LLMError) throw fetchErr;
+        if (attempt < maxTries - 1 && fetchErr.name !== "AbortError") {
+          const delay = 2000 * Math.pow(2, attempt) + Math.random() * 1000;
+          console.warn(
+            `[LLM] Fetch error on OpenRouter model ${targetModel}: ${fetchErr.message}. Retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${maxTries - 1})...`
+          );
+          await new Promise((r) => setTimeout(r, delay));
+          continue;
+        }
+        throw new LLMError(
+          fetchErr.message || "Failed to communicate with OpenRouter API",
+          lastStatus || 500,
+          "openrouter",
+          targetModel
+        );
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
+
+    throw new LLMError(
+      `Exhausted retries calling OpenRouter API (${targetModel})`,
+      lastStatus,
+      "openrouter",
+      targetModel
+    );
+  }
+
+  // Gemini API invocation with backoff
   async function callGeminiApi(
     currentPrompt: string,
     targetModel: string,
@@ -82,7 +256,6 @@ export async function callLLM<T>(options: CallLLMOptions<T>): Promise<T> {
   ): Promise<string> {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${key}`;
     let lastStatus = 500;
-    let lastErrorText = "";
 
     for (let attempt = 0; attempt < maxTries; attempt++) {
       const controller = new AbortController();
@@ -102,9 +275,38 @@ export async function callLLM<T>(options: CallLLMOptions<T>): Promise<T> {
           }),
         });
 
+        if (res.status === 429 || res.status === 402) {
+          const errText = await res.text();
+          if (isQuotaExhausted(res.status, errText)) {
+            console.warn(`[LLM] Gemini quota exhausted (HTTP ${res.status}). Skipping retries.`);
+            throw new LLMError(
+              `Gemini quota exhausted (HTTP ${res.status}): ${errText}`,
+              res.status,
+              "gemini",
+              targetModel
+            );
+          }
+
+          lastStatus = 429;
+          if (attempt < maxTries - 1) {
+            const delay = 2000 * Math.pow(2, attempt) + Math.random() * 1000;
+            console.warn(
+              `[LLM] HTTP 429 Rate Limit on model ${targetModel}. Retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${maxTries - 1})...`
+            );
+            await new Promise((r) => setTimeout(r, delay));
+            continue;
+          }
+          throw new LLMError(
+            `Gemini API error (HTTP 429) on model ${targetModel}: ${errText}`,
+            429,
+            "gemini",
+            targetModel
+          );
+        }
+
         if (RETRYABLE_STATUS_CODES.includes(res.status)) {
           lastStatus = res.status;
-          lastErrorText = await res.text();
+          const errText = await res.text();
           if (attempt < maxTries - 1) {
             const delay = 2000 * Math.pow(2, attempt) + Math.random() * 1000;
             console.warn(
@@ -112,20 +314,19 @@ export async function callLLM<T>(options: CallLLMOptions<T>): Promise<T> {
             );
             await new Promise((r) => setTimeout(r, delay));
             continue;
-          } else {
-            throw new LLMError(
-              `Gemini API error (HTTP ${res.status}) on model ${targetModel}: ${lastErrorText.substring(0, 300)}`,
-              res.status,
-              "gemini",
-              targetModel
-            );
           }
+          throw new LLMError(
+            `Gemini API error (HTTP ${res.status}) on model ${targetModel}: ${errText}`,
+            res.status,
+            "gemini",
+            targetModel
+          );
         }
 
         if (!res.ok) {
           const errText = await res.text();
           throw new LLMError(
-            `Gemini API error ${res.status}: ${errText.substring(0, 300)}`,
+            `Gemini API error ${res.status}: ${errText}`,
             res.status,
             "gemini",
             targetModel
@@ -169,22 +370,56 @@ export async function callLLM<T>(options: CallLLMOptions<T>): Promise<T> {
 
   // Helper for single invocation with model fallback
   async function invokeProvider(currentPrompt: string): Promise<string> {
-    if (apiKey) {
+    const selectedProvider = CONFIG.LLM_PROVIDER;
+
+    if (selectedProvider === "openrouter") {
+      const openRouterKey = getOpenRouterApiKey();
+      if (!openRouterKey) {
+        throw new LLMError(
+          "No OpenRouter API key configured. Provide OPENROUTER_API_KEY in .env.local",
+          401,
+          "openrouter",
+          model
+        );
+      }
+
       try {
-        return await callGeminiApi(currentPrompt, model, apiKey, 4);
+        return await callOpenRouterApi(currentPrompt, model, openRouterKey, 4);
       } catch (err: any) {
         const fallbackModel = CONFIG.FALLBACK_LLM_MODEL;
-        // If the primary model still returns 503 after retries, retry once with fallback model
+        // If primary model returns 503 after retries and LLM_FALLBACK_MODEL is configured
         if (err instanceof LLMError && err.status === 503 && fallbackModel && fallbackModel !== model) {
           console.warn(
             `[LLM] Primary model ${model} returned HTTP 503 after retries. Switching to fallback model: ${fallbackModel}`
           );
-          return await callGeminiApi(currentPrompt, fallbackModel, apiKey, 1);
+          return await callOpenRouterApi(currentPrompt, fallbackModel, openRouterKey, 1);
         }
         throw err;
       }
-    } else if (process.env.OPENAI_API_KEY) {
-      // OpenAI fallback
+    } else if (selectedProvider === "gemini") {
+      const geminiKey = getGeminiApiKey();
+      if (!geminiKey) {
+        throw new LLMError(
+          "No Gemini API key configured. Provide GEMINI_API_KEY or GOOGLE_API_KEY in .env.local",
+          401,
+          "gemini",
+          model
+        );
+      }
+
+      try {
+        return await callGeminiApi(currentPrompt, model, geminiKey, 4);
+      } catch (err: any) {
+        const fallbackModel = CONFIG.FALLBACK_LLM_MODEL;
+        if (err instanceof LLMError && err.status === 503 && fallbackModel && fallbackModel !== model) {
+          console.warn(
+            `[LLM] Primary model ${model} returned HTTP 503 after retries. Switching to fallback model: ${fallbackModel}`
+          );
+          return await callGeminiApi(currentPrompt, fallbackModel, geminiKey, 1);
+        }
+        throw err;
+      }
+    } else if (selectedProvider === "openai") {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -199,7 +434,6 @@ export async function callLLM<T>(options: CallLLMOptions<T>): Promise<T> {
           body: JSON.stringify({
             model: process.env.OPENAI_MODEL || "gpt-4o-mini",
             temperature,
-            response_format: { type: "json_object" },
             messages: [{ role: "user", content: currentPrompt }],
           }),
         });
@@ -221,21 +455,12 @@ export async function callLLM<T>(options: CallLLMOptions<T>): Promise<T> {
       }
     } else {
       throw new LLMError(
-        "No LLM API key configured. Provide GEMINI_API_KEY or GOOGLE_API_KEY in .env.local",
+        "No LLM API key configured. Provide OPENROUTER_API_KEY, GEMINI_API_KEY, or OPENAI_API_KEY in .env.local",
         401,
         "none",
         model
       );
     }
-  }
-
-  // Clean JSON string
-  function extractJson(raw: string): any {
-    let cleaned = raw.trim();
-    if (cleaned.startsWith("```")) {
-      cleaned = cleaned.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
-    }
-    return JSON.parse(cleaned);
   }
 
   // Execution with 1 retry on schema validation failure
@@ -257,9 +482,7 @@ export async function callLLM<T>(options: CallLLMOptions<T>): Promise<T> {
     if (valResult.success) {
       llmCache.set(cacheKey, valResult.data);
       const elapsed = Date.now() - startTime;
-      console.log(
-        `[LLM] MODE: LIVE | PROVIDER: ${provider} | MODEL: ${model} | LATENCY: ${elapsed}ms | CACHE: MISS`
-      );
+      recordLLMCall(stage, elapsed, provider, model);
       return valResult.data;
     }
 
@@ -278,9 +501,7 @@ Please re-generate your response and ensure it strictly conforms to the requeste
     if (retryValResult.success) {
       llmCache.set(cacheKey, retryValResult.data);
       const elapsed = Date.now() - startTime;
-      console.log(
-        `[LLM] MODE: LIVE (RETRY_SUCCESS) | PROVIDER: ${provider} | MODEL: ${model} | LATENCY: ${elapsed}ms | CACHE: MISS`
-      );
+      recordLLMCall(stage, elapsed, provider, model);
       return retryValResult.data;
     }
 

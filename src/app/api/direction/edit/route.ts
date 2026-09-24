@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
     };
 
     // Re-score Genericness
-    const genScore = await calculateGenericnessScore(updatedDir, session.generic_map);
+    const genScore = await calculateGenericnessScore(updatedDir, session.generic_map, 5);
 
     // Re-run Blind Read
     const paletteSummary = updatedDir.visual.palette.map((p) => `- ${p.role}: ${p.hex} (${p.name})`).join("\n");
@@ -89,6 +89,7 @@ export async function POST(req: NextRequest) {
         prompt: `${blindPrompt}\n\n[Re-scored reader #${r}]`,
         schema: BlindReadSchema,
         temperature: 0.7,
+        stage: 5,
         mockFallback: () => {
           // If the edit is deliberately vague (test requirement #3 in SPEC Section 11):
           const isVague = updatedDir.tagline.toLowerCase().includes("something for people") ||
@@ -136,6 +137,7 @@ export async function POST(req: NextRequest) {
       prompt: judgePrompt,
       schema: JudgeResponseSchema,
       temperature: 0.2,
+      stage: 5,
       mockFallback: () => {
         if (isVague) {
           // SPEC requirement: "Making a direction deliberately vague raises its Perception Gap; making it clearer lowers it."

@@ -47,6 +47,7 @@ export async function POST(req: NextRequest) {
       prompt: launchPrompt,
       schema: BrandKitLaunchSchema,
       temperature: 0.7,
+      stage: 8,
       mockFallback: () => {
         return fixture.brand_kit.launch;
       },

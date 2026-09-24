@@ -1,16 +1,23 @@
 import { CONFIG, getOpenRouterApiKey } from "./config";
 import { LLMError } from "./llm";
+import { recordEmbeddingCall } from "./metrics";
 import crypto from "crypto";
 
-// Call counter per run
-let embeddingCallCount = 0;
-
-export function getEmbeddingCallCount(): number {
-  return embeddingCallCount;
-}
-
-export function resetEmbeddingCallCount(): void {
-  embeddingCallCount = 0;
+export function isQuotaExhausted(status: number, errorText: string): boolean {
+  if (status === 402) return true;
+  if (status === 429) {
+    const lower = errorText.toLowerCase();
+    return (
+      lower.includes("quota") ||
+      lower.includes("credit") ||
+      lower.includes("balance") ||
+      lower.includes("insufficient") ||
+      lower.includes("payment") ||
+      lower.includes("billing") ||
+      (lower.includes("exhausted") && !lower.includes("rate limit"))
+    );
+  }
+  return false;
 }
 
 export function cosineSimilarity(vecA: number[], vecB: number[]): number {
@@ -73,7 +80,7 @@ export function getLocalEmbedding(text: string, dim: number = 64): number[] {
 }
 
 // Generate embeddings for multiple texts in ONE batched request via OpenRouter Nemotron
-export async function getEmbeddings(texts: string[]): Promise<number[][]> {
+export async function getEmbeddings(texts: string[], stage?: string | number): Promise<number[][]> {
   if (texts.length === 0) return [];
 
   // In MOCK_MODE, return local hash vectors
@@ -113,10 +120,41 @@ export async function getEmbeddings(texts: string[]): Promise<number[][]> {
         }),
       });
 
-      const isRetryable = res.status === 429 || (res.status >= 500 && res.status <= 504);
+      // Check for quota exhaustion first - DO NOT retry if quota is exhausted
+      if (res.status === 429 || res.status === 402) {
+        const errText = await res.text();
+        if (isQuotaExhausted(res.status, errText)) {
+          console.warn(`[EMBEDDING] OpenRouter quota exhausted (HTTP ${res.status}). Skipping retries.`);
+          throw new LLMError(
+            `OpenRouter quota exhausted (HTTP ${res.status}): ${errText}`,
+            res.status,
+            "openrouter",
+            model
+          );
+        }
 
-      if (isRetryable) {
+        // Transient 429 rate limit
+        lastStatus = 429;
+        if (attempt < maxRetries - 1) {
+          const delay = 2000 * Math.pow(2, attempt) + Math.random() * 1000;
+          console.warn(
+            `[EMBEDDING] HTTP 429 Rate Limit from OpenRouter (${model}). Retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${maxRetries - 1})...`
+          );
+          await new Promise((r) => setTimeout(r, delay));
+          continue;
+        }
+        throw new LLMError(
+          `OpenRouter embedding rate limit exceeded (HTTP 429): ${errText}`,
+          429,
+          "openrouter",
+          model
+        );
+      }
+
+      // Check for 5xx retryable status codes
+      if (res.status >= 500 && res.status <= 504) {
         lastStatus = res.status;
+        const errText = await res.text();
         if (attempt < maxRetries - 1) {
           const delay = 2000 * Math.pow(2, attempt) + Math.random() * 1000;
           console.warn(
@@ -125,9 +163,8 @@ export async function getEmbeddings(texts: string[]): Promise<number[][]> {
           await new Promise((r) => setTimeout(r, delay));
           continue;
         }
-        const errText = await res.text();
         throw new LLMError(
-          `OpenRouter embedding error (HTTP ${res.status}): ${errText.substring(0, 300)}`,
+          `OpenRouter embedding error (HTTP ${res.status}): ${errText}`,
           res.status,
           "openrouter",
           model
@@ -137,7 +174,7 @@ export async function getEmbeddings(texts: string[]): Promise<number[][]> {
       if (!res.ok) {
         const errText = await res.text();
         throw new LLMError(
-          `OpenRouter embedding API error ${res.status}: ${errText.substring(0, 300)}`,
+          `OpenRouter embedding API error ${res.status}: ${errText}`,
           res.status,
           "openrouter",
           model
@@ -167,12 +204,8 @@ export async function getEmbeddings(texts: string[]): Promise<number[][]> {
         );
       }
 
-      embeddingCallCount++;
       const elapsed = Date.now() - startTime;
-      const dim = embeddings[0]?.length || 0;
-      console.log(
-        `[EMBEDDING] Batch call #${embeddingCallCount} (${texts.length} texts, dim=${dim}) | PROVIDER: openrouter | MODEL: ${model} | LATENCY: ${elapsed}ms`
-      );
+      recordEmbeddingCall(stage, texts.length, elapsed, "openrouter", model);
 
       return embeddings;
     } catch (err: any) {
@@ -203,8 +236,8 @@ export async function getEmbeddings(texts: string[]): Promise<number[][]> {
 }
 
 // Generate embedding for single text
-export async function getEmbedding(text: string): Promise<number[]> {
-  const [emb] = await getEmbeddings([text]);
+export async function getEmbedding(text: string, stage?: string | number): Promise<number[]> {
+  const [emb] = await getEmbeddings([text], stage);
   return emb;
 }
 

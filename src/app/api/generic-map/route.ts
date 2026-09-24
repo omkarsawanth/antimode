@@ -49,6 +49,7 @@ export async function POST(req: NextRequest) {
         prompt: `${prompt}\n\n[Batch ${b + 1} of ${totalBatches}]`,
         schema: BaselineSamplesResponseSchema,
         temperature: 1.0,
+        stage: 2,
         mockFallback: () => {
           const base = fixture.generic_map.samples;
           const sliceStart = (b * batchSize) % base.length;
@@ -63,7 +64,7 @@ export async function POST(req: NextRequest) {
 
     // Embed all samples
     const sampleTexts = samples.map((s) => `${s.name} | ${s.tagline} | ${s.tone_words.join(", ")}`);
-    const embeddings = await getEmbeddings(sampleTexts);
+    const embeddings = await getEmbeddings(sampleTexts, 2);
 
     // Compute centroid in original embedding space (works dynamically for any dimension e.g. 2048)
     const dim = embeddings[0]?.length || 0;
