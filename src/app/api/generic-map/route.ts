@@ -6,6 +6,7 @@ import { callLLM } from "@/lib/llm";
 import { BaselineSampleSchema, GenericMap } from "@/types/schemas";
 import { getFixtureForIdea } from "@/lib/fixtures";
 import { getEmbeddings, projectTo2D } from "@/lib/embeddings";
+import { CONFIG } from "@/lib/config";
 
 const BaselineSamplesResponseSchema = z.array(BaselineSampleSchema);
 
@@ -25,16 +26,17 @@ export async function POST(req: NextRequest) {
 
     const fixture = getFixtureForIdea(session.brief.idea);
 
-    const totalSamples = 30;
+    const isGroq = CONFIG.LLM_PROVIDER === "groq";
+    const totalSamples = isGroq ? 9 : 30; // Reduce samples for Groq to stay under 1000 OTPM limit
     const batchSize = 3;
     const allSamples: any[] = [];
     const totalBatches = Math.ceil(totalSamples / batchSize);
 
-    // Run 30-sample generation in batches of 3 with short delays between batches
+    // Run sample generation in batches with short delays between batches
     for (let b = 0; b < totalBatches; b++) {
       if (b > 0) {
-        // Short delay between batches to be gentler on rate limits
-        await new Promise((r) => setTimeout(r, 600));
+        // Longer delay for Groq to help with rate limits
+        await new Promise((r) => setTimeout(r, isGroq ? 3000 : 600));
       }
 
       const prompt = renderPrompt("generic_baseline", {
@@ -50,7 +52,7 @@ export async function POST(req: NextRequest) {
         schema: BaselineSamplesResponseSchema,
         temperature: 1.0,
         stage: 2,
-        maxTokens: 3000,
+        maxTokens: isGroq ? 800 : 3000,
         mockFallback: () => {
           const base = fixture.generic_map.samples;
           const sliceStart = (b * batchSize) % base.length;
@@ -61,7 +63,7 @@ export async function POST(req: NextRequest) {
       allSamples.push(...batchSamples);
     }
 
-    const samples = allSamples.slice(0, 30);
+    const samples = allSamples.slice(0, totalSamples);
 
     // Embed all samples
     const sampleTexts = samples.map((s) => `${s.name} | ${s.tagline} | ${s.tone_words.join(", ")}`);
@@ -112,7 +114,7 @@ export async function POST(req: NextRequest) {
       stage: 2,
       agent: "Generic Cluster Mapper",
       input_summary: `Synthesized Brief for "${session.brief.idea.substring(0, 40)}..."`,
-      output_summary: `Mapped 30 baseline concepts. Detected clichés: [${generic_map.common_names.slice(0, 4).join(", ")}], common tropes: [${generic_map.common_tone_words.slice(0, 3).join(", ")}].`,
+      output_summary: `Mapped ${samples.length} baseline concepts. Detected clichés: [${generic_map.common_names.slice(0, 4).join(", ")}], common tropes: [${generic_map.common_tone_words.slice(0, 3).join(", ")}].`,
     });
     saveSession(session);
 

@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { ZodSchema } from "zod";
-import { CONFIG, getGeminiApiKey, getOpenRouterApiKey, getGroqApiKey } from "./config";
+import { CONFIG, getGeminiApiKey, getOpenRouterApiKey, getGroqApiKey, getHfToken } from "./config";
 import { recordLLMCall } from "./metrics";
 import { isQuotaExhausted } from "./embeddings";
 
@@ -133,6 +133,29 @@ export function resolveLLMModel(provider: string, customModel?: string): string 
 
   if (provider === "openai") {
     return process.env.LLM_MODEL || process.env.OPENAI_MODEL || "gpt-4o-mini";
+  }
+
+  if (provider === "huggingface") {
+    const model = process.env.LLM_MODEL;
+    if (!model) {
+      if (CONFIG.isMockMode) return "mock-hf-model";
+      throw new LLMError(
+        "LLM_MODEL environment variable is unset. When LLM_PROVIDER=huggingface, you must set LLM_MODEL in .env.local. Never falling back silently.",
+        400,
+        "huggingface",
+        "unset"
+      );
+    }
+    if (model.startsWith("gemini-") || model.startsWith("llama-3.3-70b-versatile")) {
+      if (CONFIG.isMockMode) return "mock-hf-model";
+      throw new LLMError(
+        `Invalid LLM_MODEL for Hugging Face: "${model}". For Hugging Face, set LLM_MODEL in .env.local to a valid Hugging Face model ID. Never falling back silently.`,
+        400,
+        "huggingface",
+        model
+      );
+    }
+    return model;
   }
 
   return process.env.LLM_MODEL || "gemini-3.5-flash";
@@ -664,6 +687,143 @@ export async function callLLM<T>(options: CallLLMOptions<T>): Promise<T> {
     );
   }
 
+  // Hugging Face API invocation with backoff
+  async function callHuggingFaceApi(
+    currentPrompt: string,
+    targetModel: string,
+    apiKey: string,
+    maxTries: number = 4
+  ): Promise<string> {
+    const url = "https://router.huggingface.co/v1/chat/completions";
+    let lastStatus = 500;
+
+    for (let attempt = 0; attempt < maxTries; attempt++) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+      try {
+        console.log(
+          `[LLM][HuggingFace] Requesting model: "${targetModel}" | max_tokens: ${maxTokens} | attempt: ${attempt + 1}/${maxTries}`
+        );
+        const res = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          signal: controller.signal,
+          body: JSON.stringify({
+            model: targetModel,
+            messages: [{ role: "user", content: currentPrompt }],
+            temperature,
+            max_tokens: maxTokens,
+          }),
+        });
+
+        // Check for quota exhaustion first - DO NOT RETRY
+        if (res.status === 429 || res.status === 402 || res.status === 403) {
+          const errText = await res.text();
+          if (isQuotaExhausted(res.status, errText)) {
+            console.warn(`[LLM] Hugging Face quota exhausted (HTTP ${res.status}). Skipping retries.`);
+            throw new LLMError(
+              `Hugging Face quota exhausted (HTTP ${res.status}): ${errText}`,
+              res.status,
+              "huggingface",
+              targetModel
+            );
+          }
+
+          // Transient 429 rate limit
+          lastStatus = 429;
+          if (attempt < maxTries - 1) {
+            const delay = 2000 * Math.pow(2, attempt) + Math.random() * 1000;
+            console.warn(
+              `[LLM] HTTP 429 Rate Limit from Hugging Face (${targetModel}). Retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${maxTries - 1})...`
+            );
+            await new Promise((r) => setTimeout(r, delay));
+            continue;
+          }
+          throw new LLMError(
+            `Hugging Face API rate limit exceeded (HTTP 429): ${errText}`,
+            429,
+            "huggingface",
+            targetModel
+          );
+        }
+
+        // 5xx retryable status
+        if (res.status >= 500 && res.status <= 504) {
+          lastStatus = res.status;
+          const errText = await res.text();
+          if (attempt < maxTries - 1) {
+            const delay = 2000 * Math.pow(2, attempt) + Math.random() * 1000;
+            console.warn(
+              `[LLM] HTTP ${res.status} error from Hugging Face (${targetModel}). Retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${maxTries - 1})...`
+            );
+            await new Promise((r) => setTimeout(r, delay));
+            continue;
+          }
+          throw new LLMError(
+            `Hugging Face API error (HTTP ${res.status}): ${errText}`,
+            res.status,
+            "huggingface",
+            targetModel
+          );
+        }
+
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new LLMError(
+            `Hugging Face API error ${res.status}: ${errText}`,
+            res.status,
+            "huggingface",
+            targetModel
+          );
+        }
+
+        const data = await res.json();
+        const text = data.choices?.[0]?.message?.content;
+        if (!text) {
+          throw new LLMError("Empty message response from Hugging Face API", 502, "huggingface", targetModel);
+        }
+        return text;
+      } catch (fetchErr: any) {
+        if (fetchErr instanceof LLMError) throw fetchErr;
+        if (fetchErr.name === "AbortError") {
+          throw new LLMError(
+            `Hugging Face request timed out after ${timeoutMs}ms`,
+            504,
+            "huggingface",
+            targetModel
+          );
+        }
+        if (attempt < maxTries - 1) {
+          const delay = 2000 * Math.pow(2, attempt) + Math.random() * 1000;
+          console.warn(
+            `[LLM] Fetch error on Hugging Face model ${targetModel}: ${fetchErr.message}. Retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${maxTries - 1})...`
+          );
+          await new Promise((r) => setTimeout(r, delay));
+          continue;
+        }
+        throw new LLMError(
+          fetchErr.message || "Failed to communicate with Hugging Face API",
+          lastStatus || 500,
+          "huggingface",
+          targetModel
+        );
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
+
+    throw new LLMError(
+      `Exhausted retries calling Hugging Face API (${targetModel})`,
+      lastStatus,
+      "huggingface",
+      targetModel
+    );
+  }
+
   // Helper for single invocation with model fallback
   async function invokeProvider(currentPrompt: string): Promise<string> {
     const selectedProvider = CONFIG.LLM_PROVIDER;
@@ -688,6 +848,29 @@ export async function callLLM<T>(options: CallLLMOptions<T>): Promise<T> {
             `[LLM] Primary Groq model ${model} returned HTTP 503 after retries. Switching to fallback model: ${fallbackModel}`
           );
           return await callGroqApi(currentPrompt, fallbackModel, groqKey, 1);
+        }
+        throw err;
+      }
+    } else if (selectedProvider === "huggingface") {
+      const hfToken = getHfToken();
+      if (!hfToken) {
+        throw new LLMError(
+          "No Hugging Face token configured. Provide HF_TOKEN in .env.local",
+          401,
+          "huggingface",
+          model
+        );
+      }
+
+      try {
+        return await callHuggingFaceApi(currentPrompt, model, hfToken, 4);
+      } catch (err: any) {
+        const fallbackModel = CONFIG.FALLBACK_LLM_MODEL;
+        if (err instanceof LLMError && err.status === 503 && fallbackModel && fallbackModel !== model) {
+          console.warn(
+            `[LLM] Primary Hugging Face model ${model} returned HTTP 503 after retries. Switching to fallback model: ${fallbackModel}`
+          );
+          return await callHuggingFaceApi(currentPrompt, fallbackModel, hfToken, 1);
         }
         throw err;
       }
@@ -786,39 +969,47 @@ export async function callLLM<T>(options: CallLLMOptions<T>): Promise<T> {
     }
   }
 
-  // Execution with 1 retry on schema validation failure
+  // Execution with 1 retry on schema or parse validation failure
   try {
     const rawOutput = await invokeProvider(prompt);
     let parsed: any;
+    let validationErrorMsg = "";
+
     try {
       parsed = extractJson(rawOutput);
+      const valResult = schema.safeParse(parsed);
+      if (valResult.success) {
+        setCachedResponse(cacheKey, valResult.data);
+        const elapsed = Date.now() - startTime;
+        recordLLMCall(stage, elapsed, provider, model, maxTokens);
+        return valResult.data;
+      }
+      validationErrorMsg = JSON.stringify(valResult.error.format(), null, 2);
     } catch (parseErr) {
+      validationErrorMsg = `JSON Parsing Error: ${String(parseErr)}. Please ensure your output is COMPLETE and strictly formatted as JSON.`;
+    }
+
+    // Validation or parsing failed - retry ONCE with error message appended
+    console.warn("[LLM] Output schema validation or parsing failed. Retrying once with error feedback...");
+    const retryPrompt = `${prompt}
+
+CRITICAL: Your previous response failed validation with error:
+${validationErrorMsg}
+Please re-generate your response and ensure it strictly conforms to the requested JSON schema and is fully complete.`;
+
+    const retryOutput = await invokeProvider(retryPrompt);
+    let retryParsed: any;
+    try {
+      retryParsed = extractJson(retryOutput);
+    } catch (retryParseErr) {
       throw new LLMError(
-        `Failed to parse JSON from model output: ${String(parseErr)}`,
+        `Model response failed JSON parsing after retry: ${String(retryParseErr)}`,
         502,
         provider,
         model
       );
     }
-
-    const valResult = schema.safeParse(parsed);
-    if (valResult.success) {
-      setCachedResponse(cacheKey, valResult.data);
-      const elapsed = Date.now() - startTime;
-      recordLLMCall(stage, elapsed, provider, model, maxTokens);
-      return valResult.data;
-    }
-
-    // Validation failed - retry ONCE with error message appended
-    console.warn("[LLM] Output schema validation failed. Retrying once with error feedback...");
-    const retryPrompt = `${prompt}
-
-CRITICAL: Your previous response failed schema validation with error:
-${JSON.stringify(valResult.error.format(), null, 2)}
-Please re-generate your response and ensure it strictly conforms to the requested JSON schema.`;
-
-    const retryOutput = await invokeProvider(retryPrompt);
-    const retryParsed = extractJson(retryOutput);
+    
     const retryValResult = schema.safeParse(retryParsed);
 
     if (retryValResult.success) {

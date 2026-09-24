@@ -5,6 +5,7 @@ import { renderPrompt } from "@/lib/prompts";
 import { callLLM } from "@/lib/llm";
 import { Direction, Scores, BlindRead, BlindReadSchema } from "@/types/schemas";
 import { calculateGenericnessScore, calculatePerceptionGap, isPass } from "@/lib/scoring";
+import { CONFIG } from "@/lib/config";
 
 const JudgeResponseSchema = z.object({
   reader_evaluations: z.array(
@@ -83,47 +84,50 @@ export async function POST(req: NextRequest) {
       palette_summary: paletteSummary,
     });
 
-    const blindReads: BlindRead[] = await Promise.all(
-      [1, 2, 3].map(async (r) => {
-        const readResult = await callLLM({
-          prompt: `${blindPrompt}\n\n[Re-scored reader #${r}]`,
-          schema: BlindReadSchema,
-          temperature: 0.7,
-          stage: 5,
-          maxTokens: 1500,
-          mockFallback: () => {
-            // If the edit is deliberately vague (test requirement #3 in SPEC Section 11):
-            const isVague =
-              updatedDir.tagline.toLowerCase().includes("something for people") ||
-              updatedDir.name.toLowerCase().includes("vague") ||
-              updatedDir.tagline.toLowerCase().includes("solution");
-            if (isVague) {
-              return {
-                reader_id: r,
-                guess: {
-                  category: "Generic corporate consultancy or vague lifestyle app",
-                  audience: "General public / unspecified",
-                  feel_words: ["bland", "unclear", "generic", "confusing"],
-                  one_line: "An unclear product that offers broad, undefined services.",
-                },
-              };
-            }
+    const isGroq = CONFIG.LLM_PROVIDER === "groq";
+
+    const blindReads: BlindRead[] = [];
+    for (const r of [1, 2, 3]) {
+      if (isGroq) await new Promise((res) => setTimeout(res, 1000));
+      const readResult = await callLLM({
+        prompt: `${blindPrompt}\n\n[Re-scored reader #${r}]`,
+        schema: BlindReadSchema,
+        temperature: 0.7,
+        stage: 5,
+        maxTokens: isGroq ? 300 : 1500,
+        mockFallback: () => {
+          // If the edit is deliberately vague (test requirement #3 in SPEC Section 11):
+          const isVague =
+            updatedDir.tagline.toLowerCase().includes("something for people") ||
+            updatedDir.name.toLowerCase().includes("vague") ||
+            updatedDir.tagline.toLowerCase().includes("solution");
+          if (isVague) {
             return {
               reader_id: r,
               guess: {
-                category: "Specialized high-utility software / service",
-                audience: session.brief!.audience.primary,
-                feel_words: ["focused", "distinct", "precise", "disciplined"],
-                one_line: updatedDir.one_line_pitch,
+                category: "Generic corporate consultancy or vague lifestyle app",
+                audience: "General public / unspecified",
+                feel_words: ["bland", "unclear", "generic", "confusing"],
+                one_line: "An unclear product that offers broad, undefined services.",
               },
             };
-          },
-        });
-        return { ...readResult, reader_id: r };
-      })
-    );
+          }
+          return {
+            reader_id: r,
+            guess: {
+              category: "Specialized high-utility software / service",
+              audience: session.brief!.audience.primary,
+              feel_words: ["focused", "distinct", "precise", "disciplined"],
+              one_line: updatedDir.one_line_pitch,
+            },
+          };
+        },
+      });
+      blindReads.push({ ...readResult, reader_id: r });
+    }
 
     // Judge evaluations
+    if (isGroq) await new Promise((res) => setTimeout(res, 2000));
     const judgePrompt = renderPrompt("judge", {
       brief_idea: session.brief.idea,
       brief_problem: session.brief.problem,
@@ -141,7 +145,7 @@ export async function POST(req: NextRequest) {
       schema: JudgeResponseSchema,
       temperature: 0.2,
       stage: 5,
-      maxTokens: 1500,
+      maxTokens: isGroq ? 500 : 1500,
       mockFallback: () => {
         if (isVague) {
           // SPEC requirement: "Making a direction deliberately vague raises its Perception Gap; making it clearer lowers it."

@@ -15,6 +15,10 @@ export function getGroqApiKey(): string | undefined {
   return process.env.GROQ_API_KEY;
 }
 
+export function getHfToken(): string | undefined {
+  return process.env.HF_TOKEN;
+}
+
 export const CONFIG = {
   // Thresholds as per SPEC section 6
   GENERICNESS_MAX_THRESHOLD: 55, // genericness <= 55
@@ -31,6 +35,8 @@ export const CONFIG = {
   get LLM_PROVIDER(): string {
     const fromEnv = process.env.LLM_PROVIDER?.toLowerCase();
     if (fromEnv) return fromEnv;
+    // If HF_TOKEN is configured and no other provider is forced
+    if (getHfToken()) return "huggingface";
     // If GROQ_API_KEY is configured and no other provider is forced
     if (getGroqApiKey()) return "groq";
     // If LLM_MODEL is explicitly an OpenRouter model name (contains /)
@@ -49,6 +55,22 @@ export const CONFIG = {
     const provider = this.LLM_PROVIDER;
     if (provider === "groq") {
       return process.env.LLM_MODEL || "qwen/qwen3.8-27b";
+    }
+    if (provider === "huggingface") {
+      const model = process.env.LLM_MODEL;
+      if (!model) {
+        if (this.isMockMode) return "mock-hf-model";
+        throw new Error(
+          "LLM_MODEL environment variable is unset. When LLM_PROVIDER=huggingface, LLM_MODEL must be explicitly set in .env.local. Never falling back silently."
+        );
+      }
+      if (model.startsWith("gemini-") || model.startsWith("llama-3.3-70b-versatile")) {
+        if (this.isMockMode) return "mock-hf-model";
+        throw new Error(
+          `Invalid LLM_MODEL for Hugging Face: "${model}" is a Gemini or Groq default model name. For Hugging Face, set LLM_MODEL in .env.local to a valid Hugging Face model ID. Never falling back silently.`
+        );
+      }
+      return model;
     }
     if (provider === "openrouter") {
       const model = process.env.LLM_MODEL || process.env.OPENROUTER_MODEL;
@@ -71,6 +93,7 @@ export const CONFIG = {
   },
   get FALLBACK_LLM_MODEL(): string | undefined {
     if (process.env.LLM_FALLBACK_MODEL) return process.env.LLM_FALLBACK_MODEL;
+    if (this.LLM_PROVIDER === "huggingface") return undefined; // Unless specified in env
     if (this.LLM_PROVIDER === "groq") return "openai/gpt-oss-120b";
     if (this.LLM_PROVIDER === "gemini") return "gemini-3.5-flash-lite";
     return undefined;
@@ -84,6 +107,6 @@ export const CONFIG = {
     if (process.env.MOCK_MODE === "true") return true;
     if (process.env.MOCK_MODE === "false") return false;
     // If no API key configured, automatically default to mock mode so app runs out of the box
-    return !getGeminiApiKey() && !getOpenRouterApiKey() && !getGroqApiKey() && !process.env.OPENAI_API_KEY;
+    return !getGeminiApiKey() && !getOpenRouterApiKey() && !getGroqApiKey() && !getHfToken() && !process.env.OPENAI_API_KEY;
   },
 };
