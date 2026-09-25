@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createSession, getSession, saveSession } from "@/lib/session";
 import { getFixtureForIdea } from "@/lib/fixtures";
 import { CONFIG } from "@/lib/config";
+import { getBudgetStatus } from "@/lib/llm";
 
 function getSystemInfo() {
   const isMock = CONFIG.isMockMode;

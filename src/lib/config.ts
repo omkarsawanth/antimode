@@ -19,6 +19,10 @@ export function getHfToken(): string | undefined {
   return process.env.HF_TOKEN;
 }
 
+export function getCerebrasApiKey(): string | undefined {
+  return process.env.CEREBRAS_API_KEY;
+}
+
 export const CONFIG = {
   // Thresholds as per SPEC section 6
   GENERICNESS_MAX_THRESHOLD: 55, // genericness <= 55
@@ -31,6 +35,14 @@ export const CONFIG = {
   // Baseline sample target
   BASELINE_SAMPLE_COUNT: 30,
 
+  // Budget Config
+  get DAILY_TOKEN_BUDGET(): number {
+    return parseInt(process.env.DAILY_TOKEN_BUDGET || "900000", 10);
+  },
+  get LLM_MIN_CALL_INTERVAL_MS(): number {
+    return parseInt(process.env.LLM_MIN_CALL_INTERVAL_MS || "250", 10);
+  },
+  
   // LLM Config
   get LLM_PROVIDER(): string {
     const fromEnv = process.env.LLM_PROVIDER?.toLowerCase();
@@ -50,6 +62,23 @@ export const CONFIG = {
     if (getOpenRouterApiKey()) return "openrouter";
     if (process.env.OPENAI_API_KEY) return "openai";
     return "none";
+  },
+      get LLM_PROVIDER_CHAIN(): string[] {
+    if (process.env.LLM_PROVIDER_CHAIN) {
+      return process.env.LLM_PROVIDER_CHAIN.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+    }
+    return [this.LLM_PROVIDER];
+  },
+  getProviderModel(provider: string): string {
+    const override = process.env[`LLM_MODEL_${provider.toUpperCase()}`];
+    if (override) return override;
+    if (provider === "groq") return "qwen/qwen3.8-27b";
+    if (provider === "cerebras") return process.env.LLM_MODEL || "llama3.1-8b";
+    if (provider === "huggingface") return "mistralai/Mixtral-8x7B-Instruct-v0.1";
+    if (provider === "openrouter") return process.env.OPENROUTER_MODEL || "google/gemini-3.5-flash-lite-preview-02-05:free";
+    if (provider === "openai") return process.env.OPENAI_MODEL || "gpt-4o-mini";
+    if (provider === "gemini") return "gemini-3.5-flash-lite";
+    return process.env.LLM_MODEL || "gemini-3.5-flash";
   },
   get DEFAULT_LLM_MODEL(): string {
     const provider = this.LLM_PROVIDER;

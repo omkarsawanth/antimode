@@ -64,7 +64,12 @@ export default function AntimodeApp() {
   const [streamProgress, setStreamProgress] = useState<{ step: number; total: number } | null>(null);
   const [selectedDirectionId, setSelectedDirectionId] = useState<string | null>(null);
   const [collisions, setCollisions] = useState<Collision[]>([]);
-  const [systemMode, setSystemMode] = useState<{ is_mock_mode: boolean; provider: string; model: string }>({
+  const [systemMode, setSystemMode] = useState<{
+    is_mock_mode: boolean;
+    provider: string;
+    model: string;
+    budget?: { used: number; limit: number; remaining: number; resetsAt: string };
+  }>({
     is_mock_mode: false,
     provider: "Gemini",
     model: "gemini-3.6-flash",

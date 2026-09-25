@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { ZodSchema } from "zod";
-import { CONFIG, getGeminiApiKey, getOpenRouterApiKey, getGroqApiKey, getHfToken } from "./config";
+import { CONFIG, getGeminiApiKey, getOpenRouterApiKey, getGroqApiKey, getHfToken, getCerebrasApiKey } from "./config";
 import { recordLLMCall } from "./metrics";
 import { isQuotaExhausted } from "./embeddings";
 
@@ -24,6 +24,77 @@ function setCachedResponse(key: string, value: any): void {
     if (oldestKey) llmCache.delete(oldestKey);
   }
   llmCache.set(key, value);
+}
+
+// Global Budget and Rate Limit Tracking
+const providerTokensUsed = new Map<string, number>();
+const providerLastReset = new Map<string, string>();
+const providerLastCallTime = new Map<string, number>();
+export const providerCooldowns = new Map<string, number>();
+
+export function getBudgetStatus(provider: string = "default") {
+  const now = new Date();
+  const currentDate = now.toLocaleDateString();
+  const lastReset = providerLastReset.get(provider) || "";
+  
+  if (currentDate !== lastReset) {
+    providerTokensUsed.set(provider, 0);
+    providerLastReset.set(provider, currentDate);
+  }
+  
+  const resetsAt = new Date(now);
+  resetsAt.setHours(24, 0, 0, 0);
+  const used = providerTokensUsed.get(provider) || 0;
+  return {
+    used,
+    limit: CONFIG.DAILY_TOKEN_BUDGET,
+    remaining: Math.max(0, CONFIG.DAILY_TOKEN_BUDGET - used),
+    resetsAt: resetsAt.toISOString(),
+  };
+}
+
+export function checkBudget(estimatedTokens: number, provider: string, model: string) {
+  const status = getBudgetStatus(provider);
+  if (status.used + estimatedTokens > status.limit) {
+    throw new LLMError(
+      `Daily token budget exhausted (${status.used} / ${status.limit} used), resets at ${status.resetsAt}`,
+      429,
+      provider,
+      model
+    );
+  }
+}
+
+export function recordUsage(
+  prompt_tokens?: number,
+  completion_tokens?: number,
+  estimated_max?: number,
+  provider: string = "default"
+) {
+  const used = (prompt_tokens || 0) + (completion_tokens || 0);
+  if (used === 0) {
+    const est = estimated_max || 0;
+    if (est > 0) {
+      getBudgetStatus(provider);
+      const curr = providerTokensUsed.get(provider) || 0;
+      providerTokensUsed.set(provider, curr + est);
+    }
+    return;
+  }
+  
+  getBudgetStatus(provider); 
+  const curr = providerTokensUsed.get(provider) || 0;
+  providerTokensUsed.set(provider, curr + used);
+}
+
+export async function enforceRateLimit(provider: string = "default") {
+  const now = Date.now();
+  const lastCallTime = providerLastCallTime.get(provider) || 0;
+  const timeSinceLastCall = now - lastCallTime;
+  if (timeSinceLastCall < CONFIG.LLM_MIN_CALL_INTERVAL_MS) {
+    await new Promise(r => setTimeout(r, CONFIG.LLM_MIN_CALL_INTERVAL_MS - timeSinceLastCall));
+  }
+  providerLastCallTime.set(provider, Date.now());
 }
 
 export class LLMError extends Error {
@@ -230,6 +301,80 @@ export function extractJson(raw: string): any {
   }
 }
 
+
+async function callCerebrasApi(prompt: string, model: string, apiKey: string, maxTries: number = 4) {
+  const endpoint = "https://api.cerebras.ai/v1/chat/completions";
+  const timeoutMs = 45000;
+  let lastStatus = 500;
+  
+  for (let attempt = 0; attempt < maxTries; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          model,
+          temperature: 0.7,
+          messages: [{ role: "user", content: prompt }],
+        }),
+      });
+
+      if (res.status === 429 || res.status === 402) {
+        lastStatus = 429;
+        if (attempt < maxTries - 1) {
+          const delay = 2000 * Math.pow(2, attempt) + Math.random() * 1000;
+          await new Promise(r => setTimeout(r, delay));
+          continue;
+        }
+        throw new LLMError("Cerebras rate limit", 429, "cerebras", model);
+      }
+
+      if (res.status >= 500 && res.status <= 504) {
+        lastStatus = res.status;
+        if (attempt < maxTries - 1) {
+          const delay = 2000 * Math.pow(2, attempt) + Math.random() * 1000;
+          await new Promise(r => setTimeout(r, delay));
+          continue;
+        }
+        throw new LLMError(`Cerebras API error ${res.status}`, res.status, "cerebras", model);
+      }
+
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new LLMError(`Cerebras API error ${res.status}: ${errText}`, res.status, "cerebras", model);
+      }
+
+      const data = await res.json();
+      const text = data.choices?.[0]?.message?.content;
+      if (!text) throw new LLMError("Empty message response", 502, "cerebras", model);
+      
+      recordUsage(data.usage?.prompt_tokens, data.usage?.completion_tokens, 0, "cerebras");
+      return text;
+    } catch (err: any) {
+      if (err instanceof LLMError) throw err;
+      if (err.name === "AbortError") {
+        throw new LLMError(`Timeout after ${timeoutMs}ms`, 504, "cerebras", model);
+      }
+      if (attempt < maxTries - 1) {
+        const delay = 2000 * Math.pow(2, attempt) + Math.random() * 1000;
+        await new Promise(r => setTimeout(r, delay));
+        continue;
+      }
+      throw new LLMError(err.message || "Failed Cerebras", lastStatus, "cerebras", model);
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+  throw new LLMError("Exhausted retries", lastStatus, "cerebras", model);
+}
+
 export async function callLLM<T>(options: CallLLMOptions<T>): Promise<T> {
   const {
     prompt,
@@ -243,8 +388,8 @@ export async function callLLM<T>(options: CallLLMOptions<T>): Promise<T> {
   } = options;
 
   const startTime = Date.now();
-  const provider = CONFIG.LLM_PROVIDER;
-  const model = resolveLLMModel(provider, customModel);
+  let provider = CONFIG.LLM_PROVIDER;
+  let model = resolveLLMModel(provider, customModel);
   const maxTokens = resolveMaxTokens(stage, customMaxTokens);
   const stageKey = typeof stage === "number" ? `Stage ${stage}` : stage || "General";
 
@@ -825,221 +970,179 @@ export async function callLLM<T>(options: CallLLMOptions<T>): Promise<T> {
   }
 
   // Helper for single invocation with model fallback
-  async function invokeProvider(currentPrompt: string): Promise<string> {
-    const selectedProvider = CONFIG.LLM_PROVIDER;
+  async function invokeProvider(currentPrompt: string, selectedProvider: string, targetModel: string): Promise<string> {
+    // Proactive daily token budget & rate limiting (unless mock mode)
+    if (!CONFIG.isMockMode) {
+      checkBudget(maxTokens, selectedProvider, targetModel);
+      await enforceRateLimit(selectedProvider);
+    }
 
     if (selectedProvider === "groq") {
       const groqKey = getGroqApiKey();
       if (!groqKey) {
-        throw new LLMError(
-          "No Groq API key configured. Provide GROQ_API_KEY in .env.local",
-          401,
-          "groq",
-          model
-        );
+        throw new LLMError("No Groq API key", 401, "groq", targetModel);
       }
-
-      try {
-        return await callGroqApi(currentPrompt, model, groqKey, 4);
-      } catch (err: any) {
-        const fallbackModel = CONFIG.FALLBACK_LLM_MODEL;
-        if (err instanceof LLMError && err.status === 503 && fallbackModel && fallbackModel !== model) {
-          console.warn(
-            `[LLM] Primary Groq model ${model} returned HTTP 503 after retries. Switching to fallback model: ${fallbackModel}`
-          );
-          return await callGroqApi(currentPrompt, fallbackModel, groqKey, 1);
-        }
-        throw err;
-      }
+      return await callGroqApi(currentPrompt, targetModel, groqKey, 1); // 1 try, failover to next provider!
+    } else if (selectedProvider === "cerebras") {
+      const cerebrasKey = getCerebrasApiKey();
+      if (!cerebrasKey) throw new LLMError("No Cerebras API key", 401, "cerebras", targetModel);
+      return await callCerebrasApi(currentPrompt, targetModel, cerebrasKey, 1);
     } else if (selectedProvider === "huggingface") {
       const hfToken = getHfToken();
-      if (!hfToken) {
-        throw new LLMError(
-          "No Hugging Face token configured. Provide HF_TOKEN in .env.local",
-          401,
-          "huggingface",
-          model
-        );
-      }
-
-      try {
-        return await callHuggingFaceApi(currentPrompt, model, hfToken, 4);
-      } catch (err: any) {
-        const fallbackModel = CONFIG.FALLBACK_LLM_MODEL;
-        if (err instanceof LLMError && err.status === 503 && fallbackModel && fallbackModel !== model) {
-          console.warn(
-            `[LLM] Primary Hugging Face model ${model} returned HTTP 503 after retries. Switching to fallback model: ${fallbackModel}`
-          );
-          return await callHuggingFaceApi(currentPrompt, fallbackModel, hfToken, 1);
-        }
-        throw err;
-      }
+      if (!hfToken) throw new LLMError("No HF token", 401, "huggingface", targetModel);
+      return await callHuggingFaceApi(currentPrompt, targetModel, hfToken, 1);
     } else if (selectedProvider === "openrouter") {
       const openRouterKey = getOpenRouterApiKey();
-      if (!openRouterKey) {
-        throw new LLMError(
-          "No OpenRouter API key configured. Provide OPENROUTER_API_KEY in .env.local",
-          401,
-          "openrouter",
-          model
-        );
-      }
-
-      try {
-        return await callOpenRouterApi(currentPrompt, model, openRouterKey, 4);
-      } catch (err: any) {
-        const fallbackModel = CONFIG.FALLBACK_LLM_MODEL;
-        // If primary model returns 503 after retries and LLM_FALLBACK_MODEL is configured
-        if (err instanceof LLMError && err.status === 503 && fallbackModel && fallbackModel !== model) {
-          console.warn(
-            `[LLM] Primary model ${model} returned HTTP 503 after retries. Switching to fallback model: ${fallbackModel}`
-          );
-          return await callOpenRouterApi(currentPrompt, fallbackModel, openRouterKey, 1);
-        }
-        throw err;
-      }
+      if (!openRouterKey) throw new LLMError("No OR key", 401, "openrouter", targetModel);
+      return await callOpenRouterApi(currentPrompt, targetModel, openRouterKey, 1);
     } else if (selectedProvider === "gemini") {
       const geminiKey = getGeminiApiKey();
-      if (!geminiKey) {
-        throw new LLMError(
-          "No Gemini API key configured. Provide GEMINI_API_KEY or GOOGLE_API_KEY in .env.local",
-          401,
-          "gemini",
-          model
-        );
-      }
-
-      try {
-        return await callGeminiApi(currentPrompt, model, geminiKey, 4);
-      } catch (err: any) {
-        const fallbackModel = CONFIG.FALLBACK_LLM_MODEL;
-        if (err instanceof LLMError && err.status === 503 && fallbackModel && fallbackModel !== model) {
-          console.warn(
-            `[LLM] Primary model ${model} returned HTTP 503 after retries. Switching to fallback model: ${fallbackModel}`
-          );
-          return await callGeminiApi(currentPrompt, fallbackModel, geminiKey, 1);
-        }
-        throw err;
-      }
+      if (!geminiKey) throw new LLMError("No Gemini key", 401, "gemini", targetModel);
+      return await callGeminiApi(currentPrompt, targetModel, geminiKey, 1);
     } else if (selectedProvider === "openai") {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), timeoutMs);
-
       try {
-        console.log(
-          `[LLM][OpenAI] Requesting model: "${process.env.OPENAI_MODEL || "gpt-4o-mini"}" | max_tokens: ${maxTokens}`
-        );
         const res = await fetch("https://api.openai.com/v1/chat/completions", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-          },
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
           signal: controller.signal,
-          body: JSON.stringify({
-            model: process.env.OPENAI_MODEL || "gpt-4o-mini",
-            temperature,
-            max_tokens: maxTokens,
-            messages: [{ role: "user", content: currentPrompt }],
-          }),
+          body: JSON.stringify({ model: targetModel, temperature, max_tokens: maxTokens, messages: [{ role: "user", content: currentPrompt }] }),
         });
-
         if (!res.ok) {
-          const errText = await res.text();
-          throw new LLMError(
-            `OpenAI API error ${res.status}: ${errText.substring(0, 300)}`,
-            res.status,
-            "openai",
-            process.env.OPENAI_MODEL || "gpt-4o-mini"
-          );
+           if (res.status === 429 || res.status === 402) {
+             const retryAfter = res.headers.get("retry-after") || "60";
+             throw new LLMError("Rate limited", 429, "openai", targetModel);
+           }
+           throw new LLMError("OpenAI error", res.status, "openai", targetModel);
         }
-
         const data = await res.json();
+        recordUsage(data.usage?.prompt_tokens, data.usage?.completion_tokens, maxTokens, "openai");
         return data.choices?.[0]?.message?.content || "";
       } finally {
         clearTimeout(timeout);
       }
-    } else {
-      throw new LLMError(
-        "No LLM API key configured. Provide OPENROUTER_API_KEY, GEMINI_API_KEY, or OPENAI_API_KEY in .env.local",
-        401,
-        "none",
-        model
-      );
     }
+    throw new LLMError("Unknown provider", 400, selectedProvider, targetModel);
   }
 
-  // Execution with 1 retry on schema or parse validation failure
-  try {
-    const rawOutput = await invokeProvider(prompt);
-    let parsed: any;
-    let validationErrorMsg = "";
+  // Execution with provider failover chain and 1 retry on schema validation failure
+  let lastErr: any;
+  const chain = CONFIG.LLM_PROVIDER_CHAIN;
 
+  for (const selectedProvider of chain) {
+    const cooldownUntil = providerCooldowns.get(selectedProvider) || 0;
+    if (Date.now() < cooldownUntil) {
+      console.log(`[LLM] Provider ${selectedProvider} is cooling down, skipping...`);
+      continue;
+    }
+    
+    provider = selectedProvider;
+    model = customModel ? resolveLLMModel(selectedProvider, customModel) : CONFIG.getProviderModel(selectedProvider);
+    
     try {
-      parsed = extractJson(rawOutput);
-      const valResult = schema.safeParse(parsed);
-      if (valResult.success) {
-        setCachedResponse(cacheKey, valResult.data);
+      const rawOutput = await invokeProvider(prompt, provider, model);
+      let parsed: any;
+      let validationErrorMsg = "";
+
+      try {
+        parsed = extractJson(rawOutput);
+        const valResult = schema.safeParse(parsed);
+        if (valResult.success) {
+          setCachedResponse(cacheKey, valResult.data);
+          const elapsed = Date.now() - startTime;
+          recordLLMCall(stage, elapsed, provider, model, maxTokens);
+          (global as any).lastActiveProvider = provider;
+          (global as any).lastActiveModel = model;
+          return valResult.data;
+        }
+        validationErrorMsg = JSON.stringify(valResult.error.format(), null, 2);
+      } catch (parseErr) {
+        validationErrorMsg = `JSON Parsing Error: ${String(parseErr)}. Please ensure your output is COMPLETE and strictly formatted as JSON.`;
+      }
+
+      console.warn(`[LLM] Output schema validation or parsing failed on ${provider}. Retrying once with error feedback...`);
+      const retryPrompt = `${prompt}\n\nCRITICAL: Your previous response failed validation with error:\n${validationErrorMsg}\nPlease re-generate your response and ensure it strictly conforms to the requested JSON schema and is fully complete.`;
+
+      const retryOutput = await invokeProvider(retryPrompt, provider, model);
+      let retryParsed: any;
+      try {
+        retryParsed = extractJson(retryOutput);
+      } catch (retryParseErr) {
+        throw new LLMError(
+          `Model response failed JSON parsing after retry: ${String(retryParseErr)}`,
+          502,
+          provider,
+          model
+        );
+      }
+      
+      const retryValResult = schema.safeParse(retryParsed);
+
+      if (retryValResult.success) {
+        setCachedResponse(cacheKey, retryValResult.data);
         const elapsed = Date.now() - startTime;
         recordLLMCall(stage, elapsed, provider, model, maxTokens);
-        return valResult.data;
+        (global as any).lastActiveProvider = provider;
+        (global as any).lastActiveModel = model;
+        return retryValResult.data;
       }
-      validationErrorMsg = JSON.stringify(valResult.error.format(), null, 2);
-    } catch (parseErr) {
-      validationErrorMsg = `JSON Parsing Error: ${String(parseErr)}. Please ensure your output is COMPLETE and strictly formatted as JSON.`;
-    }
 
-    // Validation or parsing failed - retry ONCE with error message appended
-    console.warn("[LLM] Output schema validation or parsing failed. Retrying once with error feedback...");
-    const retryPrompt = `${prompt}
-
-CRITICAL: Your previous response failed validation with error:
-${validationErrorMsg}
-Please re-generate your response and ensure it strictly conforms to the requested JSON schema and is fully complete.`;
-
-    const retryOutput = await invokeProvider(retryPrompt);
-    let retryParsed: any;
-    try {
-      retryParsed = extractJson(retryOutput);
-    } catch (retryParseErr) {
       throw new LLMError(
-        `Model response failed JSON parsing after retry: ${String(retryParseErr)}`,
+        `Model response failed schema validation after retry: ${JSON.stringify(retryValResult.error.format())}`,
         502,
         provider,
         model
       );
-    }
-    
-    const retryValResult = schema.safeParse(retryParsed);
-
-    if (retryValResult.success) {
-      setCachedResponse(cacheKey, retryValResult.data);
+    } catch (err: any) {
+      lastErr = err;
       const elapsed = Date.now() - startTime;
-      recordLLMCall(stage, elapsed, provider, model, maxTokens);
-      return retryValResult.data;
+      console.error(
+        `[LLM] CALL FAILED | STAGE: ${stageKey} | PROVIDER: ${provider} | MODEL: ${model} | MAX_TOKENS: ${maxTokens} | ERROR: ${err?.message} | LATENCY: ${elapsed}ms`
+      );
+
+      // Check for rate-limit / quota / budget exhaust
+      if (
+        err.status === 429 || 
+        err.status === 402 || 
+        err.status === 403 || 
+        (err.message && err.message.includes("budget exhausted"))
+      ) {
+        let resetTime = Date.now() + 60000;
+        if (err.message && err.message.includes("budget exhausted")) {
+           const resetsAtStr = err.message.split("resets at ")[1];
+           if (resetsAtStr) {
+              const resetDate = new Date(resetsAtStr);
+              if (!isNaN(resetDate.getTime())) resetTime = resetDate.getTime();
+           }
+        }
+        providerCooldowns.set(provider, resetTime);
+        console.log(`[LLM] Provider ${provider} exhausted, falling back to next...`);
+        continue; // Immediately try next provider in chain
+      }
+      
+      if (CONFIG.isMockMode) {
+         console.warn(`[LLM] MODE: MOCK_FALLBACK (Mock Mode is active) | LATENCY: ${elapsed}ms`);
+         (global as any).lastActiveProvider = "mock";
+         (global as any).lastActiveModel = "mock";
+         return mockFallback();
+      }
+      
+      throw err; // For non-429s, throw immediately and fail stage
     }
-
-    // Schema validation failed after retry:
-    throw new LLMError(
-      `Model response failed schema validation after retry: ${JSON.stringify(retryValResult.error.format())}`,
-      502,
-      provider,
-      model
-    );
-  } catch (err: any) {
-    const elapsed = Date.now() - startTime;
-    console.error(
-      `[LLM] CALL FAILED | STAGE: ${stageKey} | PROVIDER: ${provider} | MODEL: ${model} | MAX_TOKENS: ${maxTokens} | ERROR: ${err?.message} | LATENCY: ${elapsed}ms`
-    );
-
-    // In LIVE mode, NEVER fall back to fixtures! Throw typed error!
-    if (!CONFIG.isMockMode) {
-      if (err instanceof LLMError) throw err;
-      throw new LLMError(err.message || "LLM call failed", err.status || 500, provider, model);
-    }
-
-    // Only in MOCK mode can we return mockFallback
-    console.warn(`[LLM] MODE: MOCK_FALLBACK (Mock Mode is active) | LATENCY: ${elapsed}ms`);
-    return mockFallback();
   }
+
+  if (CONFIG.isMockMode) {
+      (global as any).lastActiveProvider = "mock";
+      (global as any).lastActiveModel = "mock";
+      return mockFallback();
+  }
+  
+  if (lastErr && !(lastErr.status === 429 || lastErr.status === 402 || lastErr.status === 403 || (lastErr.message && lastErr.message.includes("budget exhausted")))) {
+    if (lastErr instanceof LLMError) throw lastErr;
+    throw new LLMError(lastErr.message || "LLM call failed", lastErr.status || 500, "all", "all");
+  }
+  
+  throw new LLMError("all configured providers are rate-limited, next available at midnight", 429, "all", "all");
 }
+
