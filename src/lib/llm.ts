@@ -1106,6 +1106,7 @@ export async function callLLM<T>(options: CallLLMOptions<T>): Promise<T> {
         err.status === 429 || 
         err.status === 402 || 
         err.status === 403 || 
+        err.status === 401 ||
         (err.message && err.message.includes("budget exhausted"))
       ) {
         let resetTime = Date.now() + 60000;
@@ -1138,7 +1139,7 @@ export async function callLLM<T>(options: CallLLMOptions<T>): Promise<T> {
       return mockFallback();
   }
   
-  if (lastErr && !(lastErr.status === 429 || lastErr.status === 402 || lastErr.status === 403 || (lastErr.message && lastErr.message.includes("budget exhausted")))) {
+  if (lastErr && !(lastErr.status === 429 || lastErr.status === 402 || lastErr.status === 403 || lastErr.status === 401 || (lastErr.message && lastErr.message.includes("budget exhausted")))) {
     if (lastErr instanceof LLMError) throw lastErr;
     throw new LLMError(lastErr.message || "LLM call failed", lastErr.status || 500, "all", "all");
   }
